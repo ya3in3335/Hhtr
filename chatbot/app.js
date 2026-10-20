@@ -7,7 +7,7 @@ const LS = {
   ghToken: "ultron_gh_token",
 };
 const state = {
-  apiBase: localStorage.getItem(LS.apiBase) || `${location.origin.includes("localhost") ? "http://localhost:8787" : location.origin}`,
+  apiBase: localStorage.getItem(LS.apiBase) || "https://ultron-proxy.yacincianai.workers.dev",
   perms: JSON.parse(localStorage.getItem(LS.perms) || '{"mic":false,"loc":false}'),
   ghToken: localStorage.getItem(LS.ghToken) || "",
   messages: [], // {role, content, reasoning_details?}

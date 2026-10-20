@@ -9,7 +9,7 @@ class Prefs(ctx: Context) {
     private val sp = ctx.getSharedPreferences("ultron", Context.MODE_PRIVATE)
 
     var apiBase: String
-        get() = sp.getString("api", "http://10.0.2.2:8787") ?: "http://10.0.2.2:8787"
+        get() = sp.getString("api", "https://ultron-proxy.yacincianai.workers.dev") ?: "https://ultron-proxy.yacincianai.workers.dev"
         set(v) { sp.edit().putString("api", v).apply() }
 
     var ghToken: String
