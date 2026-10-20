@@ -276,6 +276,16 @@ $("input").addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
 });
 
+/* ---------- Splash screen ---------- */
+(function splash() {
+  const el = document.getElementById("splash");
+  if (!el) return;
+  const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const dismiss = () => el.classList.add("hide");
+  el.addEventListener("click", dismiss);        // tap to skip
+  setTimeout(dismiss, reduce ? 700 : 2600);     // auto-dismiss after the animation
+})();
+
 /* ---------- Service worker + quick voice shortcut ---------- */
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js").catch(() => {});

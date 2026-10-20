@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 520" fill="none" role="img" aria-label="Ultron">
+  <defs>
+    <linearGradient id="uMetal" x1="256" y1="40" x2="256" y2="500" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset=".22" stop-color="#dcdcdc"/>
+      <stop offset=".52" stop-color="#9a9a9a"/>
+      <stop offset=".82" stop-color="#363636"/>
+      <stop offset="1" stop-color="#0c0c0c"/>
+    </linearGradient>
+    <linearGradient id="uDark" x1="256" y1="40" x2="256" y2="500" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6f6f6f"/>
+      <stop offset=".5" stop-color="#1b1b1b"/>
+      <stop offset="1" stop-color="#000000"/>
+    </linearGradient>
+    <linearGradient id="uBlade" x1="0" y1="90" x2="0" y2="470" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset=".45" stop-color="#8f8f8f"/>
+      <stop offset="1" stop-color="#101010"/>
+    </linearGradient>
+    <radialGradient id="uEye" cx=".5" cy=".5" r=".6">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset=".45" stop-color="#f2f2f2"/>
+      <stop offset="1" stop-color="#555555"/>
+    </radialGradient>
+    <filter id="uGlow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Side blades (crescent horns) -->
+  <g id="u-blades" stroke="#000" stroke-width="2">
+    <g id="u-blade-r">
+      <path d="M405 96 C500 168 506 330 430 456 C452 322 448 184 405 96 Z" fill="url(#uBlade)"/>
+      <path d="M414 120 C470 196 472 318 432 420" stroke="#ffffff" stroke-width="3" fill="none" opacity=".55"/>
+    </g>
+    <use href="#u-blade-r" transform="matrix(-1 0 0 1 512 0)"/>
+  </g>
+
+  <!-- Head silhouette -->
+  <path id="u-head" d="M256 54 L288 96 L318 156 L338 236 L349 302 L331 374 L300 432 L256 490 L212 432 L181 374 L163 302 L174 236 L194 156 L224 96 Z"
+        fill="url(#uMetal)" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round"/>
+
+  <!-- Mirrored face panels -->
+  <g id="u-panels" stroke="#000" stroke-width="2" stroke-linejoin="round">
+    <g id="u-panels-r">
+      <!-- brow wing over the eye -->
+      <path d="M256 210 L302 194 L334 196 L322 222 L290 226 L256 228 Z" fill="url(#uDark)"/>
+      <!-- cheek plate -->
+      <path d="M300 292 L349 306 L330 362 L294 346 L286 314 Z" fill="url(#uMetal)"/>
+      <!-- temple blade / inner streak -->
+      <path d="M318 158 L336 236 L322 244 L306 170 Z" fill="url(#uDark)"/>
+      <path d="M322 170 L334 236" stroke="#ffffff" stroke-width="2" opacity=".5"/>
+    </g>
+    <use href="#u-panels-r" transform="matrix(-1 0 0 1 512 0)"/>
+  </g>
+
+  <!-- Crown ridge -->
+  <path d="M256 58 L272 112 L265 184 L256 206 L247 184 L240 112 Z" fill="url(#uDark)" stroke="#000" stroke-width="2"/>
+  <path d="M256 66 L256 200" stroke="#ffffff" stroke-width="2.5" opacity=".6"/>
+
+  <!-- Nose / central ridge -->
+  <path d="M256 250 L270 302 L263 382 L256 436 L249 382 L242 302 Z" fill="url(#uDark)" stroke="#000" stroke-width="2"/>
+  <path d="M256 262 L256 430" stroke="#ffffff" stroke-width="2" opacity=".55"/>
+
+  <!-- Lower jaw grille -->
+  <g stroke="#ffffff" stroke-width="3" stroke-linecap="round" opacity=".55">
+    <path d="M240 452 L272 452"/>
+    <path d="M244 464 L268 464"/>
+    <path d="M248 476 L264 476"/>
+  </g>
+
+  <!-- Eyes (animatable) -->
+  <g id="u-eyes" filter="url(#uGlow)">
+    <path id="u-eye-r" d="M270 280 L291 257 L328 263 L301 287 Z" fill="url(#uEye)" stroke="#ffffff" stroke-width="1.5"/>
+    <use href="#u-eye-r" transform="matrix(-1 0 0 1 512 0)"/>
+  </g>
+</svg>

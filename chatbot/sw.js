@@ -8,6 +8,7 @@ const ASSETS = [
   "./icons/icon.svg",
   "./icons/maskable.svg",
   "./icons/mic.svg",
+  "./icons/ultron-logo.svg",
 ];
 
 self.addEventListener("install", (e) => {
