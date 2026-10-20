@@ -19,6 +19,11 @@ class Prefs(ctx: Context) {
     var lang: String
         get() = sp.getString("lang", "ar") ?: "ar"
         set(v) { sp.edit().putString("lang", v).apply() }
+
+    /** All conversations serialized as JSON (see ChatStore). */
+    var chatsJson: String
+        get() = sp.getString("chats", "") ?: ""
+        set(v) { sp.edit().putString("chats", v).apply() }
 }
 
 /** Applies the chosen app language by wrapping the base context. */

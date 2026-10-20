@@ -41,4 +41,10 @@
     <string name="mic_need_perm">Activez d\'abord l\'autorisation du micro.</string>
     <string name="loc_disabled">(Autorisation de position désactivée — activez-la via le bouclier en haut.)</string>
     <string name="your_location">Votre position</string>
+    <string name="chats">Discussions</string>
+    <string name="delete">Supprimer</string>
+    <string name="copy">Copier</string>
+    <string name="copied">Copié ✓</string>
+    <string name="empty_chats">Aucune discussion</string>
+    <string name="you">Vous</string>
 </resources>

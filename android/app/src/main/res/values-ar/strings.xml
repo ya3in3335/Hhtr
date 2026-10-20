@@ -41,4 +41,10 @@
     <string name="mic_need_perm">فعّل إذن المايك أولًا.</string>
     <string name="loc_disabled">(إذن الموقع غير مفعّل — فعّله من الدرع بالأعلى.)</string>
     <string name="your_location">موقعك الحالي</string>
+    <string name="chats">المحادثات</string>
+    <string name="delete">حذف</string>
+    <string name="copy">نسخ</string>
+    <string name="copied">تم النسخ ✓</string>
+    <string name="empty_chats">لا توجد محادثات بعد</string>
+    <string name="you">أنت</string>
 </resources>

@@ -41,4 +41,10 @@
     <string name="mic_need_perm">Enable the microphone permission first.</string>
     <string name="loc_disabled">(Location permission is off — enable it from the shield above.)</string>
     <string name="your_location">Your location</string>
+    <string name="chats">Chats</string>
+    <string name="delete">Delete</string>
+    <string name="copy">Copy</string>
+    <string name="copied">Copied ✓</string>
+    <string name="empty_chats">No chats yet</string>
+    <string name="you">You</string>
 </resources>

@@ -33,22 +33,31 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Translate
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import com.ultron.chat.Conversation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -72,6 +81,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ultron.chat.ChatViewModel
@@ -140,6 +150,7 @@ fun ChatScreen(vm: ChatViewModel) {
     var showLang by remember { mutableStateOf(false) }
 
     val listState = rememberLazyListState()
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
     val errText = stringResource(R.string.err_connect)
     val locLabel = stringResource(R.string.your_location)
 
@@ -176,12 +187,19 @@ fun ChatScreen(vm: ChatViewModel) {
         Status.LISTENING -> stringResource(R.string.status_listening)
     }
 
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            DrawerContent(vm) { scope.launch { drawerState.close() } }
+        },
+    ) {
     Box(Modifier.fillMaxSize().background(BgBrush)) {
         AmbientGlow()
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
                 GlassTopBar(statusText, vm.status, micOn || locOn,
+                    onMenu = { scope.launch { drawerState.open() } },
                     onPerms = { showPerms = true },
                     onLang = { showLang = true },
                     onSettings = { apiBase = prefs.apiBase; ghToken = prefs.ghToken; showSettings = true },
@@ -207,6 +225,7 @@ fun ChatScreen(vm: ChatViewModel) {
                 }
             }
         }
+    }
     }
 
     val sheetShape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp)
@@ -241,15 +260,17 @@ fun ChatScreen(vm: ChatViewModel) {
 @Composable
 private fun GlassTopBar(
     status: String, statusEnum: Status, permsActive: Boolean,
-    onPerms: () -> Unit, onLang: () -> Unit, onSettings: () -> Unit, onNew: () -> Unit,
+    onMenu: () -> Unit, onPerms: () -> Unit, onLang: () -> Unit, onSettings: () -> Unit, onNew: () -> Unit,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(Brush.verticalGradient(listOf(Color(0xCC1C0608), Color(0x001C0608))))
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .padding(horizontal = 12.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        GlassIcon(Icons.Filled.Menu, UltronText, onMenu)
+        Spacer(Modifier.size(6.dp))
         Box(contentAlignment = Alignment.Center) {
             Box(Modifier.size(42.dp).background(Brush.radialGradient(listOf(UltronGlow.copy(alpha = .5f), Color.Transparent))))
             Image(painterResource(R.drawable.ultron), contentDescription = null, modifier = Modifier.size(36.dp))
@@ -357,11 +378,12 @@ private fun MessageItem(msg: Msg) {
                         .clip(RoundedCornerShape(6.dp, 20.dp, 20.dp, 20.dp))
                         .background(UltronGlass)
                         .border(1.dp, UltronGlassBorder, RoundedCornerShape(6.dp, 20.dp, 20.dp, 20.dp))
-                        .padding(horizontal = 15.dp, vertical = 11.dp)
+                        .padding(horizontal = 15.dp, vertical = 12.dp)
                 ) {
-                    SelectionContainer { Text(msg.content, color = UltronText, fontSize = 15.sp, lineHeight = 23.sp) }
+                    SelectionContainer { MarkdownText(msg.content, UltronText) }
                 }
                 if (!msg.reasoning.isNullOrBlank()) ReasoningBlock(msg.reasoning)
+                if (msg.content.isNotBlank()) CopyRow(msg.content)
             }
         }
     }
@@ -613,6 +635,72 @@ private fun LangRow(label: String, code: String, selected: Boolean, onPick: (Str
         Text(label, color = if (selected) UltronRedSoft else UltronText, fontSize = 16.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
         Spacer(Modifier.weight(1f))
         if (selected) Text("✓", color = UltronRedSoft, fontSize = 16.sp)
+    }
+}
+
+@Composable
+private fun CopyRow(text: String) {
+    val clip = LocalClipboardManager.current
+    val copyStr = stringResource(R.string.copy)
+    val copiedStr = stringResource(R.string.copied)
+    var copied by remember { mutableStateOf(false) }
+    LaunchedEffect(copied) { if (copied) { kotlinx.coroutines.delay(1500); copied = false } }
+    Row(
+        Modifier.padding(top = 6.dp).clip(RoundedCornerShape(8.dp))
+            .clickable { clip.setText(AnnotatedString(text)); copied = true }
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Filled.ContentCopy, contentDescription = null, tint = if (copied) Color(0xFF8CF0A6) else UltronMuted, modifier = Modifier.size(14.dp))
+        Spacer(Modifier.size(5.dp))
+        Text(if (copied) copiedStr else copyStr, color = if (copied) Color(0xFF8CF0A6) else UltronMuted, fontSize = 11.sp)
+    }
+}
+
+@Composable
+private fun DrawerContent(vm: ChatViewModel, onPicked: () -> Unit) {
+    ModalDrawerSheet(drawerContainerColor = UltronInk) {
+        Column(Modifier.fillMaxSize().padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Image(painterResource(R.drawable.ultron), contentDescription = null, modifier = Modifier.size(30.dp))
+                Spacer(Modifier.size(10.dp))
+                Text("ULTRON", color = UltronText, fontWeight = FontWeight.Bold, fontSize = 17.sp, letterSpacing = 2.sp)
+            }
+            Spacer(Modifier.size(16.dp))
+            GradientButton(stringResource(R.string.new_chat), Modifier.fillMaxWidth()) { vm.newChat(); onPicked() }
+            Spacer(Modifier.size(18.dp))
+            Text(stringResource(R.string.chats), color = UltronMuted, fontSize = 12.sp, letterSpacing = 1.sp)
+            Spacer(Modifier.size(8.dp))
+            if (vm.conversations.all { it.title.isBlank() && it.messages.isEmpty() }) {
+                Text(stringResource(R.string.empty_chats), color = UltronMuted, fontSize = 13.sp, modifier = Modifier.padding(vertical = 10.dp))
+            }
+            LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                items(vm.conversations.size) { i ->
+                    val c = vm.conversations[i]
+                    ChatRow(c, c.id == vm.currentId, onClick = { vm.selectChat(c.id); onPicked() }, onDelete = { vm.deleteChat(c.id) })
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChatRow(c: Conversation, selected: Boolean, onClick: () -> Unit, onDelete: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+            .background(if (selected) Color(0x1FE11D2A) else Color.Transparent)
+            .clickable { onClick() }.padding(horizontal = 12.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            c.title.ifBlank { stringResource(R.string.new_chat) },
+            color = if (selected) UltronRedSoft else UltronText,
+            fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        Box(Modifier.clip(RoundedCornerShape(8.dp)).clickable { onDelete() }.padding(6.dp)) {
+            Icon(Icons.Filled.DeleteOutline, contentDescription = null, tint = UltronMuted, modifier = Modifier.size(18.dp))
+        }
     }
 }
 
