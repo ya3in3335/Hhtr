@@ -124,15 +124,15 @@ fun ChatScreen(vm: ChatViewModel) {
 
     fun toggleMic() {
         if (!micOn) { showPerms = true; return }
-        if (listening) { host.stopListening(); listening = false; vm.setStatus(Status.READY); return }
+        if (listening) { host.stopListening(); listening = false; vm.updateStatus(Status.READY); return }
         listening = true
-        vm.setStatus(Status.LISTENING)
+        vm.updateStatus(Status.LISTENING)
         host.startListening(
             prefs.lang,
             onText = { input = it },
             onEnd = {
                 listening = false
-                vm.setStatus(Status.READY)
+                vm.updateStatus(Status.READY)
                 val t = input
                 if (t.isNotBlank()) doSend(t)
             },

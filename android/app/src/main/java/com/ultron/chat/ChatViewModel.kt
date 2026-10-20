@@ -18,7 +18,7 @@ class ChatViewModel : ViewModel() {
     var busy by mutableStateOf(false)
         private set
 
-    fun setStatus(s: Status) { status = s }
+    fun updateStatus(s: Status) { status = s }
 
     fun clear() {
         messages.clear()
