@@ -11,5 +11,10 @@ SYSTEM_PROMPT = ""
 MODEL = "poolside/laguna-s-2.1:free"
 REASONING = "true"
 
+# Persistent storage for the admin-edited prompt (KV).
+[[kv_namespaces]]
+binding = "PROMPT_KV"
+id = "995f80940c1f4689b8da4b5032641fdc"
+
 # The OpenRouter key is stored as a SECRET (never in this file / repo):
 #   echo "<key>" | npx wrangler secret put OPENROUTER_API_KEY
