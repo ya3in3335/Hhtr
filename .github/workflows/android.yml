@@ -27,14 +27,10 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install SDK packages
-        run: |
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" >/dev/null
-
+      # The ubuntu-latest runner ships the Android SDK (platform android-34,
+      # build-tools 34.0.0, platform-tools) with licenses pre-accepted, so we
+      # use it directly instead of the setup-android action (which fails trying
+      # to install the obsolete "tools" package).
       - name: Build debug APK
         run: |
           chmod +x ./gradlew
