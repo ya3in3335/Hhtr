@@ -21,6 +21,16 @@ async function getPrompt(env) {
   return env.SYSTEM_PROMPT || "";
 }
 
+// Admin password: a KV-stored value (changeable from the panel) overriding the
+// initial ADMIN_TOKEN secret.
+async function getAdminPw(env) {
+  if (env.PROMPT_KV) {
+    const v = await env.PROMPT_KV.get("admin_password");
+    if (v) return v;
+  }
+  return env.ADMIN_TOKEN || "";
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
@@ -34,7 +44,8 @@ export default {
     // ---- Admin API: read/write the prompt (auth via X-Admin-Token) ----
     if (url.pathname === "/admin/prompt") {
       const token = request.headers.get("X-Admin-Token");
-      if (!env.ADMIN_TOKEN || token !== env.ADMIN_TOKEN) return json({ error: "Unauthorized" }, 401);
+      const adminPw = await getAdminPw(env);
+      if (!adminPw || token !== adminPw) return json({ error: "Unauthorized" }, 401);
       if (request.method === "GET") {
         return json({ prompt: await getPrompt(env), model: env.MODEL || "poolside/laguna-s-2.1:free" });
       }
@@ -46,6 +57,20 @@ export default {
         return json({ ok: true, savedAt: new Date().toISOString() });
       }
       return json({ error: "method" }, 405);
+    }
+
+    // ---- Admin API: change the admin password (stored in KV) ----
+    if (url.pathname === "/admin/password") {
+      const token = request.headers.get("X-Admin-Token");
+      const adminPw = await getAdminPw(env);
+      if (!adminPw || token !== adminPw) return json({ error: "Unauthorized" }, 401);
+      if (request.method !== "POST") return json({ error: "method" }, 405);
+      if (!env.PROMPT_KV) return json({ error: "KV not bound (PROMPT_KV)" }, 500);
+      let body; try { body = await request.json(); } catch { return json({ error: "bad json" }, 400); }
+      const np = typeof body?.password === "string" ? body.password.trim() : "";
+      if (np.length < 4) return json({ error: "Password must be at least 4 characters" }, 400);
+      await env.PROMPT_KV.put("admin_password", np);
+      return json({ ok: true });
     }
 
     // ---- Public meta ----
@@ -134,6 +159,12 @@ svg{display:block}
 <textarea id="prompt" placeholder="اكتب البرومبت الداخلي هنا…"></textarea>
 <div class="row" style="margin-top:14px"><button id="save" style="flex:0 0 auto">حفظ في Cloudflare</button><span class="pill" id="meta">—</span></div>
 <div class="status" id="status"></div>
+</div>
+<div class="card">
+<label for="newpw">تغيير كلمة مرور الأدمن</label>
+<p class="hint">تُخزَّن الكلمة الجديدة في Cloudflare KV وتُستخدم في الدخول القادم.</p>
+<div class="row"><input id="newpw" type="password" placeholder="كلمة مرور جديدة (4 أحرف فأكثر)" autocomplete="off"/><button id="changepw" class="ghost" style="flex:0 0 auto">تغيير</button></div>
+<div class="status" id="pwstatus"></div>
 </div></div>
 <script>
 const $=(i)=>document.getElementById(i);
@@ -146,5 +177,13 @@ try{const r=await fetch("/admin/prompt",{method:"POST",headers:{"Content-Type":"
 if(!r.ok)throw new Error((await r.json()).error||r.status);st("تم الحفظ في Cloudflare ✓","ok")}catch(e){st("فشل الحفظ: "+e.message,"err")}finally{$("save").disabled=false}}
 async function meta(){try{const r=await fetch("/api/meta");const m=await r.json();
 $("meta").textContent=(m.keyConfigured?"المفتاح ✓":"المفتاح ✗")+" · "+(m.promptConfigured?"برومبت مضبوط":"لا برومبت")+" · "+(m.kvBound?"KV ✓":"KV ✗")}catch{$("meta").textContent="—"}}
-$("load").onclick=load;$("save").onclick=save;meta();
+async function changePw(){const t=$("token").value.trim();const np=$("newpw").value.trim();const s=$("pwstatus");
+if(!t){s.textContent="أدخل كلمة المرور الحالية بالأعلى أولًا.";s.className="status err";return;}
+if(np.length<4){s.textContent="كلمة المرور الجديدة قصيرة.";s.className="status err";return;}
+$("changepw").disabled=true;
+try{const r=await fetch("/admin/password",{method:"POST",headers:{"Content-Type":"application/json","X-Admin-Token":t},body:JSON.stringify({password:np})});
+if(!r.ok)throw new Error((await r.json()).error||r.status);
+$("token").value=np;$("newpw").value="";s.textContent="تم تغيير كلمة المرور ✓";s.className="status ok";}
+catch(e){s.textContent="فشل: "+e.message;s.className="status err";}finally{$("changepw").disabled=false;}}
+$("load").onclick=load;$("save").onclick=save;$("changepw").onclick=changePw;meta();
 </script></body></html>`;
