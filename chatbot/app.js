@@ -2,9 +2,9 @@
 
 /* ---------- State ---------- */
 const LS = {
-  apiBase: "hhtr_api_base",
-  perms: "hhtr_perms",
-  ghToken: "hhtr_gh_token",
+  apiBase: "ultron_api_base",
+  perms: "ultron_perms",
+  ghToken: "ultron_gh_token",
 };
 const state = {
   apiBase: localStorage.getItem(LS.apiBase) || `${location.origin.includes("localhost") ? "http://localhost:8787" : location.origin}`,

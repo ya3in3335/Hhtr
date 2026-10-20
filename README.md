@@ -1,4 +1,4 @@
-# Hhtr — شات بوت ذكاء اصطناعي + لوحة أدمن
+# Ultron — شات بوت ذكاء اصطناعي + لوحة أدمن
 
 تطبيقان منفصلان:
 
@@ -52,7 +52,7 @@ python3 -m http.server 5173
 ## البنية
 
 ```
-Hhtr/
+Ultron/   (مجلد المستودع Hhtr)
 ├── chatbot/            تطبيق الدردشة PWA
 │   ├── index.html  app.js  styles.css
 │   ├── manifest.json  sw.js  icons/*.svg

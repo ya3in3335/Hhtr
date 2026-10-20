@@ -1,6 +1,6 @@
 {
-  "name": "Hhtr Chatbot",
-  "short_name": "Hhtr",
+  "name": "Ultron Chatbot",
+  "short_name": "Ultron",
   "description": "مساعد دردشة ذكي — واجهة حمراء مع تحكم صوتي بإذن المستخدم.",
   "start_url": "./index.html",
   "scope": "./",

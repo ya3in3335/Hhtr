@@ -107,7 +107,7 @@ app.post("/api/chat", async (req, res) => {
         Authorization: `Bearer ${OPENROUTER_API_KEY}`,
         "Content-Type": "application/json",
         "HTTP-Referer": process.env.PUBLIC_URL || "http://localhost",
-        "X-Title": "Hhtr Chatbot",
+        "X-Title": "Ultron Chatbot",
       },
       body: JSON.stringify(payload),
     });
@@ -129,6 +129,6 @@ app.use("/admin", express.static(join(__dirname, "public", "admin")));
 app.get("/", (_req, res) => res.redirect("/admin"));
 
 app.listen(PORT, () => {
-  console.log(`Hhtr backend listening on http://localhost:${PORT}`);
+  console.log(`Ultron backend listening on http://localhost:${PORT}`);
   console.log(`Admin app: http://localhost:${PORT}/admin`);
 });
