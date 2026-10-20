@@ -40,7 +40,6 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Send
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -79,8 +78,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -89,10 +86,9 @@ import com.ultron.chat.Msg
 import com.ultron.chat.Prefs
 import com.ultron.chat.R
 import com.ultron.chat.Status
-import com.ultron.chat.net.GitHubApi
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+
+private const val WORKER_URL = "https://ultron-proxy.yacincianai.workers.dev"
 
 private val BgBrush = Brush.verticalGradient(listOf(UltronBgTop, UltronBgMid, UltronBgBottom))
 private val UserBrush = Brush.linearGradient(listOf(UltronUserTop, UltronUserBottom))
@@ -138,15 +134,12 @@ fun ChatScreen(vm: ChatViewModel) {
     val prefs = remember { Prefs(ctx) }
     val scope = rememberCoroutineScope()
 
-    var apiBase by remember { mutableStateOf(prefs.apiBase) }
-    var ghToken by remember { mutableStateOf(prefs.ghToken) }
     var micOn by remember { mutableStateOf(host.micGranted()) }
     var locOn by remember { mutableStateOf(host.locGranted()) }
     var listening by remember { mutableStateOf(false) }
     var input by remember { mutableStateOf("") }
 
     var showPerms by remember { mutableStateOf(false) }
-    var showSettings by remember { mutableStateOf(false) }
     var showLang by remember { mutableStateOf(false) }
 
     val listState = rememberLazyListState()
@@ -158,7 +151,7 @@ fun ChatScreen(vm: ChatViewModel) {
         if (vm.messages.isNotEmpty()) listState.animateScrollToItem(vm.messages.size - 1)
     }
 
-    fun fire(text: String) = vm.send(apiBase, text, errText) { reply -> if (micOn) host.speak(reply, prefs.lang) }
+    fun fire(text: String) = vm.send(WORKER_URL, text, errText) { reply -> if (micOn) host.speak(reply, prefs.lang) }
     fun doSend(text: String) {
         val t = text.trim()
         if (t.isEmpty()) return
@@ -202,7 +195,6 @@ fun ChatScreen(vm: ChatViewModel) {
                     onMenu = { scope.launch { drawerState.open() } },
                     onPerms = { showPerms = true },
                     onLang = { showLang = true },
-                    onSettings = { apiBase = prefs.apiBase; ghToken = prefs.ghToken; showSettings = true },
                     onNew = { vm.clear() })
             },
             bottomBar = {
@@ -237,19 +229,6 @@ fun ChatScreen(vm: ChatViewModel) {
             }, onClose = { showPerms = false })
         }
     }
-    if (showSettings) {
-        ModalBottomSheet(onDismissRequest = { showSettings = false }, containerColor = UltronInk, shape = sheetShape) {
-            SettingsSheet(apiBase, { apiBase = it }, ghToken, { ghToken = it },
-                onConnect = { cb ->
-                    scope.launch {
-                        val res = withContext(Dispatchers.IO) { GitHubApi.validate(ghToken.trim()) }
-                        res.onSuccess { l -> prefs.ghToken = ghToken.trim(); cb("✓ $l") }.onFailure { cb("✗ ${it.message}") }
-                    }
-                },
-                onSave = { prefs.apiBase = apiBase.trim(); prefs.ghToken = ghToken.trim(); showSettings = false },
-                onLang = { showSettings = false; showLang = true })
-        }
-    }
     if (showLang) {
         ModalBottomSheet(onDismissRequest = { showLang = false }, containerColor = UltronInk, shape = sheetShape) {
             LangSheet(prefs.lang) { code -> showLang = false; host.setLocale(code) }
@@ -260,7 +239,7 @@ fun ChatScreen(vm: ChatViewModel) {
 @Composable
 private fun GlassTopBar(
     status: String, statusEnum: Status, permsActive: Boolean,
-    onMenu: () -> Unit, onPerms: () -> Unit, onLang: () -> Unit, onSettings: () -> Unit, onNew: () -> Unit,
+    onMenu: () -> Unit, onPerms: () -> Unit, onLang: () -> Unit, onNew: () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -287,7 +266,6 @@ private fun GlassTopBar(
         Spacer(Modifier.weight(1f))
         GlassIcon(Icons.Filled.Security, if (permsActive) UltronRedSoft else UltronText, onPerms)
         GlassIcon(Icons.Filled.Translate, UltronText, onLang)
-        GlassIcon(Icons.Filled.Settings, UltronText, onSettings)
         GlassIcon(Icons.Filled.Add, UltronText, onNew)
     }
 }
@@ -548,37 +526,6 @@ private fun PermRow(title: String, desc: String, checked: Boolean, onCheck: (Boo
 }
 
 @Composable
-private fun SettingsSheet(
-    apiBase: String, onApiBase: (String) -> Unit, ghToken: String, onGhToken: (String) -> Unit,
-    onConnect: ((String) -> Unit) -> Unit, onSave: () -> Unit, onLang: () -> Unit,
-) {
-    var ghStatus by remember { mutableStateOf("") }
-    Column(Modifier.padding(20.dp)) {
-        SheetHandle()
-        Text(stringResource(R.string.settings), color = UltronText, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-        Spacer(Modifier.size(14.dp))
-        Field(stringResource(R.string.set_backend), apiBase, onApiBase)
-        Spacer(Modifier.size(12.dp))
-        Field(stringResource(R.string.set_gh), ghToken, onGhToken, password = true)
-        if (ghStatus.isNotEmpty()) Text(ghStatus, color = UltronMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
-        Spacer(Modifier.size(8.dp))
-        Text(stringResource(R.string.gh_hint), color = UltronMuted, fontSize = 11.sp)
-        Spacer(Modifier.size(16.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onLang) {
-                Icon(Icons.Filled.Translate, contentDescription = null, tint = UltronText, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.size(6.dp)); Text(stringResource(R.string.language), color = UltronText)
-            }
-            Spacer(Modifier.weight(1f))
-            TextButton(onClick = { onConnect { ghStatus = it } }) { Text(stringResource(R.string.gh_connect), color = UltronText) }
-            Spacer(Modifier.size(8.dp))
-            GradientButton(stringResource(R.string.save)) { onSave() }
-        }
-        Spacer(Modifier.size(10.dp))
-    }
-}
-
-@Composable
 private fun GradientButton(text: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Box(
         modifier
@@ -589,26 +536,6 @@ private fun GradientButton(text: String, modifier: Modifier = Modifier, onClick:
             .padding(horizontal = 22.dp, vertical = 13.dp),
         contentAlignment = Alignment.Center,
     ) { Text(text, color = Color.White, fontWeight = FontWeight.Bold) }
-}
-
-@Composable
-private fun Field(label: String, value: String, onValue: (String) -> Unit, password: Boolean = false) {
-    Column {
-        Text(label, color = UltronMuted, fontSize = 13.sp)
-        Spacer(Modifier.size(6.dp))
-        Box(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(UltronGlassStrong)
-                .border(1.dp, UltronGlassBorder, RoundedCornerShape(12.dp)).padding(horizontal = 13.dp, vertical = 12.dp)
-        ) {
-            BasicTextField(
-                value = value, onValueChange = onValue, singleLine = true,
-                textStyle = TextStyle(color = UltronText, fontFamily = Tajawal, fontSize = 15.sp),
-                cursorBrush = SolidColor(UltronRedSoft),
-                visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-    }
 }
 
 @Composable
