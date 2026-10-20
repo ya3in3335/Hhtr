@@ -72,7 +72,7 @@ object Api {
     private fun base(b: String) = b.trim().trimEnd('/')
 
     fun getPrompt(b: String, token: String): Result<String> = try {
-        val req = Request.Builder().url("${base(b)}/admin/prompt").header("X-Admin-Token", token).build()
+        val req = Request.Builder().url("${base(b)}/admin/prompt").header("X-Admin-Token", token.trim()).build()
         client.newCall(req).execute().use { r ->
             val t = r.body?.string().orEmpty()
             if (!r.isSuccessful) Result.failure(RuntimeException(errOf(t, r.code)))
@@ -85,7 +85,7 @@ object Api {
 
     private fun post(url: String, token: String, body: JSONObject): Result<Unit> = try {
         val req = Request.Builder().url(url)
-            .header("X-Admin-Token", token).header("Content-Type", "application/json")
+            .header("X-Admin-Token", token.trim()).header("Content-Type", "application/json")
             .post(body.toString().toRequestBody(JSON)).build()
         client.newCall(req).execute().use { r ->
             val t = r.body?.string().orEmpty()
@@ -161,7 +161,7 @@ fun AdminApp() {
             label = { Text("رمز دخول الأدمن", fontFamily = font) },
             singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrect = false),
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(Modifier.size(10.dp))
