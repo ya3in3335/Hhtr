@@ -1,0 +1,14 @@
+{
+  "name": "hhtr-backend",
+  "version": "1.0.0",
+  "description": "Admin + API backend for the Hhtr chatbot. Stores the admin-supplied system prompt and proxies OpenRouter.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

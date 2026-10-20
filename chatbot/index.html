@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#e11d2a" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icons/icon.svg" />
+  <link rel="apple-touch-icon" href="icons/icon.svg" />
+  <link rel="stylesheet" href="styles.css" />
+  <title>Hhtr</title>
+</head>
+<body>
+  <!-- Top bar -->
+  <div class="topbar">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 48 48" aria-hidden="true">
+        <rect x="6" y="12" width="36" height="26" rx="8" fill="#e11d2a"/>
+        <circle cx="18" cy="25" r="3.6" fill="#17090a"/>
+        <circle cx="30" cy="25" r="3.6" fill="#17090a"/>
+        <path d="M24 5v6" stroke="#ff4d5a" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="24" cy="4.5" r="2.8" fill="#ff4d5a"/>
+      </svg>
+      <div>
+        <h1>Hhtr</h1>
+        <div class="state" id="state">جاهز</div>
+      </div>
+    </div>
+    <div class="spacer"></div>
+
+    <button class="icon-btn" id="btnPerms" title="أذونات الجهاز" aria-label="أذونات الجهاز">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2l7 4v6c0 4.5-3 7.5-7 10-4-2.5-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/>
+      </svg>
+    </button>
+    <button class="icon-btn" id="btnSettings" title="الإعدادات" aria-label="الإعدادات">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9c.2.63.77 1.06 1.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+      </svg>
+    </button>
+    <button class="icon-btn" id="btnNew" title="محادثة جديدة" aria-label="محادثة جديدة">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 5v14M5 12h14"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Chat -->
+  <div class="chat" id="chat">
+    <div class="empty" id="empty">
+      <svg class="logo" viewBox="0 0 48 48" aria-hidden="true">
+        <rect x="6" y="12" width="36" height="26" rx="8" fill="#e11d2a"/>
+        <circle cx="18" cy="25" r="3.6" fill="#17090a"/><circle cx="30" cy="25" r="3.6" fill="#17090a"/>
+        <path d="M24 5v6" stroke="#ff4d5a" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="24" cy="4.5" r="2.8" fill="#ff4d5a"/>
+      </svg>
+      <h3>مرحبًا 👋</h3>
+      <p>اكتب رسالتك أو اضغط المايك للتحدث. فعّل أذونات الجهاز من الدرع بالأعلى لتمنح المساعد قدرات الهاتف.</p>
+      <div class="pill-row" style="justify-content:center">
+        <span class="pill" id="pillMic">🎤 المايك: مغلق</span>
+        <span class="pill" id="pillLoc">📍 الموقع: مغلق</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Composer -->
+  <div class="composer">
+    <div class="box">
+      <button class="mic" id="btnMic" title="تحدث" aria-label="تحدث">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0012 0"/><path d="M12 17v4M9 21h6"/>
+        </svg>
+      </button>
+      <textarea id="input" rows="1" placeholder="اكتب رسالة…"></textarea>
+      <button class="send" id="btnSend" title="إرسال" aria-label="إرسال" disabled>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/>
+        </svg>
+      </button>
+    </div>
+    <div class="banner" id="banner"></div>
+  </div>
+
+  <!-- Permissions sheet -->
+  <div class="sheet-backdrop" id="permSheet">
+    <div class="sheet">
+      <h2>أذونات التحكم في الهاتف</h2>
+      <p class="sub">لا يستطيع المساعد استخدام أي قدرة قبل أن تؤكدها هنا بنفسك. فعّل ما تريد فقط.</p>
+
+      <div class="perm">
+        <div class="pic">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0012 0"/><path d="M12 17v4M9 21h6"/>
+          </svg>
+        </div>
+        <div class="t"><b>المايكروفون / الصوت</b><span>يسمح بالتحدث للمساعد وبالرد الصوتي (مساعد صوتي).</span></div>
+        <label class="switch"><input type="checkbox" id="permMic" /><span class="slider"></span></label>
+      </div>
+
+      <div class="perm">
+        <div class="pic">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 21s-7-5.3-7-11a7 7 0 1114 0c0 5.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>
+          </svg>
+        </div>
+        <div class="t"><b>الموقع</b><span>يسمح للمساعد بقراءة موقعك عند طلبك فقط (مثل: أين أنا؟).</span></div>
+        <label class="switch"><input type="checkbox" id="permLoc" /><span class="slider"></span></label>
+      </div>
+
+      <div class="actions">
+        <button id="permCancel">إغلاق</button>
+        <button class="primary" id="permSave">تأكيد الأذونات</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings sheet -->
+  <div class="sheet-backdrop" id="setSheet">
+    <div class="sheet">
+      <h2>الإعدادات</h2>
+      <p class="sub">اربط التطبيق بالخادم الخلفي (الأدمن) وبحساب GitHub.</p>
+
+      <div class="field">
+        <label>عنوان الخادم الخلفي (Backend URL)</label>
+        <input id="apiBase" type="text" placeholder="http://localhost:8787" />
+      </div>
+
+      <div class="field">
+        <label>ربط حساب GitHub (توكن شخصي — يبقى على جهازك فقط)</label>
+        <input id="ghToken" type="password" placeholder="ghp_xxx (اختياري)" />
+      </div>
+      <div id="ghStatus" class="banner" style="text-align:right"></div>
+
+      <div class="actions">
+        <button id="ghConnect">ربط GitHub</button>
+        <button class="primary" id="setSave">حفظ</button>
+      </div>
+      <p class="sub" style="margin-top:14px">
+        الربط السريع: افتح
+        <a href="https://github.com/settings/tokens?type=beta" target="_blank" rel="noopener">github.com/settings/tokens</a>،
+        أنشئ توكنًا، والصقه بالأعلى. يُخزَّن محليًا على الهاتف ولا يُرسل لأي خادم إلا GitHub.
+      </p>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

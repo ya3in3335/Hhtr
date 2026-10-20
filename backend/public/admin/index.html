@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hhtr — لوحة الأدمن</title>
+  <style>
+    :root{
+      --bg:#1a0405; --panel:#2a0709; --panel-2:#330a0d; --line:#5a1418;
+      --red:#e11d2a; --red-soft:#ff4d5a; --text:#ffe9ea; --muted:#d08a8f;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;
+      background:radial-gradient(1200px 600px at 80% -10%,#4a0d11,transparent),var(--bg);
+      color:var(--text);min-height:100vh;padding:24px}
+    .wrap{max-width:760px;margin:0 auto}
+    header{display:flex;align-items:center;gap:12px;margin-bottom:22px}
+    .logo{width:44px;height:44px}
+    h1{font-size:22px;margin:0}
+    .sub{color:var(--muted);font-size:13px;margin-top:2px}
+    .card{background:linear-gradient(180deg,var(--panel),var(--panel-2));
+      border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:18px}
+    label{display:block;font-weight:600;margin:0 0 8px}
+    .hint{color:var(--muted);font-size:12px;margin:0 0 10px;line-height:1.6}
+    input[type=text],input[type=password],textarea,select{
+      width:100%;background:#200506;border:1px solid var(--line);color:var(--text);
+      border-radius:12px;padding:12px 14px;font-size:15px;font-family:inherit}
+    textarea{min-height:220px;resize:vertical;line-height:1.7}
+    .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+    .row > *{flex:1;min-width:180px}
+    .toggle{display:flex;align-items:center;gap:10px;flex:0 0 auto}
+    .toggle input{width:auto}
+    button{cursor:pointer;border:none;border-radius:12px;padding:12px 18px;font-size:15px;
+      font-weight:700;color:#fff;background:var(--red)}
+    button.ghost{background:transparent;border:1px solid var(--line);color:var(--text)}
+    button:disabled{opacity:.5;cursor:not-allowed}
+    .status{font-size:13px;margin-top:12px;min-height:18px}
+    .ok{color:#7CFFA0}.err{color:var(--red-soft)}
+    .pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);
+      border:1px solid var(--line);border-radius:999px;padding:4px 10px}
+    svg{display:block}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <svg class="logo" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+        <rect x="4" y="9" width="40" height="30" rx="8" fill="#e11d2a"/>
+        <circle cx="17" cy="24" r="4" fill="#1a0405"/>
+        <circle cx="31" cy="24" r="4" fill="#1a0405"/>
+        <path d="M24 4v5" stroke="#ff4d5a" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="24" cy="4" r="3" fill="#ff4d5a"/>
+      </svg>
+      <div>
+        <h1>Hhtr — لوحة تحكم الأدمن</h1>
+        <div class="sub">هنا تضيف البرومبت الداخلي للنموذج. التطبيق لا يحتوي أي برومبت مسبق — الخانة فارغة بالكامل.</div>
+      </div>
+    </header>
+
+    <div class="card">
+      <label for="token">رمز دخول الأدمن (X-Admin-Token)</label>
+      <p class="hint">هذا الرمز موجود في متغير البيئة <code>ADMIN_TOKEN</code> على الخادم. أدخله لحفظ/قراءة الإعدادات.</p>
+      <div class="row">
+        <input id="token" type="password" placeholder="أدخل رمز الأدمن" autocomplete="off" />
+        <button class="ghost" style="flex:0 0 auto" id="load">تحميل الإعدادات</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <label for="prompt">البرومبت الداخلي للنموذج</label>
+      <p class="hint">
+        اكتب هنا تعليمات النظام الخاصة بك. ما تكتبه هو فقط ما سيُرسل للنموذج كـ <code>system</code>.
+        إذا تركتها فارغة، لن يُرسل أي برومبت نظام إطلاقًا.
+      </p>
+      <textarea id="prompt" placeholder="اكتب البرومبت الداخلي هنا…"></textarea>
+
+      <div class="row" style="margin-top:14px">
+        <div>
+          <label for="model" style="font-weight:500">النموذج</label>
+          <input id="model" type="text" value="poolside/laguna-s-2.1:free" />
+        </div>
+        <label class="toggle"><input id="reasoning" type="checkbox" checked /> تفعيل الـ reasoning</label>
+      </div>
+
+      <div class="row" style="margin-top:16px">
+        <button id="save" style="flex:0 0 auto">حفظ البرومبت والإعدادات</button>
+        <span class="pill" id="meta">—</span>
+      </div>
+      <div class="status" id="status"></div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const api = (path, opts = {}) => fetch(path, opts);
+    const setStatus = (msg, cls = "") => { const s = $("status"); s.textContent = msg; s.className = "status " + cls; };
+
+    async function load() {
+      const token = $("token").value.trim();
+      if (!token) return setStatus("أدخل رمز الأدمن أولًا.", "err");
+      try {
+        const r = await api("/api/config", { headers: { "X-Admin-Token": token } });
+        if (!r.ok) throw new Error((await r.json()).error || r.status);
+        const cfg = await r.json();
+        $("prompt").value = cfg.systemPrompt || "";
+        $("model").value = cfg.model || "poolside/laguna-s-2.1:free";
+        $("reasoning").checked = cfg.reasoningEnabled !== false;
+        setStatus("تم تحميل الإعدادات." + (cfg.updatedAt ? " آخر تحديث: " + new Date(cfg.updatedAt).toLocaleString("ar") : ""), "ok");
+      } catch (e) { setStatus("فشل التحميل: " + e.message, "err"); }
+    }
+
+    async function save() {
+      const token = $("token").value.trim();
+      if (!token) return setStatus("أدخل رمز الأدمن أولًا.", "err");
+      $("save").disabled = true;
+      try {
+        const r = await api("/api/config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Admin-Token": token },
+          body: JSON.stringify({
+            systemPrompt: $("prompt").value,
+            model: $("model").value,
+            reasoningEnabled: $("reasoning").checked,
+          }),
+        });
+        if (!r.ok) throw new Error((await r.json()).error || r.status);
+        setStatus("تم الحفظ بنجاح ✓", "ok");
+      } catch (e) { setStatus("فشل الحفظ: " + e.message, "err"); }
+      finally { $("save").disabled = false; }
+    }
+
+    async function meta() {
+      try {
+        const r = await api("/api/meta");
+        const m = await r.json();
+        $("meta").textContent =
+          (m.keyConfigured ? "المفتاح ✓" : "المفتاح ✗") + " · " +
+          (m.promptConfigured ? "برومبت مضبوط" : "لا برومبت") + " · " + m.model;
+      } catch { $("meta").textContent = "—"; }
+    }
+
+    $("load").onclick = load;
+    $("save").onclick = save;
+    meta();
+  </script>
+</body>
+</html>

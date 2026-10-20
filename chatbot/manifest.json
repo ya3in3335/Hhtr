@@ -1,0 +1,26 @@
+{
+  "name": "Hhtr Chatbot",
+  "short_name": "Hhtr",
+  "description": "مساعد دردشة ذكي — واجهة حمراء مع تحكم صوتي بإذن المستخدم.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1a0405",
+  "theme_color": "#e11d2a",
+  "lang": "ar",
+  "dir": "rtl",
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icons/maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "دردشة صوتية سريعة",
+      "short_name": "صوت",
+      "description": "ابدأ الاستماع فورًا",
+      "url": "./index.html?voice=1",
+      "icons": [{ "src": "icons/mic.svg", "sizes": "any", "type": "image/svg+xml" }]
+    }
+  ]
+}
