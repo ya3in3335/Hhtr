@@ -28,10 +28,10 @@ val UltronBgBottom = Color(0xFF0A080A)
 val UltronGlow = Color(0xFFE11D2A)
 val UltronUserTop = Color(0xFFF03340)
 val UltronUserBottom = Color(0xFFBE1521)
-val UltronGlass = Color(0x0DFFFFFF)
-val UltronGlassStrong = Color(0x14FFFFFF)
-val UltronGlassBorder = Color(0x1FFFFFFF)
-val UltronInk = Color(0xFF1A161A)
+val UltronGlass = Color(0xFF161616)        // near-black fill for cards/inputs
+val UltronGlassStrong = Color(0xFF1C1C1C)  // slightly lighter gray fill
+val UltronGlassBorder = Color(0x4DE11D2A)  // light red corners/borders
+val UltronInk = Color(0xFF121212)          // black/gray inside the input box + sheets
 
 val Tajawal = FontFamily(
     Font(R.font.tajawal_regular, FontWeight.Normal),
