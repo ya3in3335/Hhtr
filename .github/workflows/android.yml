@@ -31,17 +31,26 @@ jobs:
       # build-tools 34.0.0, platform-tools) with licenses pre-accepted, so we
       # use it directly instead of the setup-android action (which fails trying
       # to install the obsolete "tools" package).
-      - name: Build debug APK
+      - name: Build debug APKs (chat + admin)
         run: |
           chmod +x ./gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          ./gradlew :app:assembleDebug :admin:assembleDebug --no-daemon --stacktrace
 
-      - name: Stage APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/ultron-debug.apk"
+      - name: Stage APKs
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/ultron-debug.apk"
+          cp admin/build/outputs/apk/debug/admin-debug.apk "$GITHUB_WORKSPACE/ultron-admin-debug.apk"
 
-      - name: Upload APK artifact
+      - name: Upload chat APK
         uses: actions/upload-artifact@v4
         with:
           name: ultron-apk
           path: ultron-debug.apk
+          if-no-files-found: error
+
+      - name: Upload admin APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ultron-admin-apk
+          path: ultron-admin-debug.apk
           if-no-files-found: error

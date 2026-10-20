@@ -15,3 +15,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Ultron"
 include(":app")
+include(":admin")
