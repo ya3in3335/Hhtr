@@ -1,0 +1,15 @@
+name = "ultron-proxy"
+main = "ultron-proxy.js"
+compatibility_date = "2024-10-01"
+workers_dev = true
+
+# Plain variables (NOT secrets). The admin edits SYSTEM_PROMPT from the
+# Cloudflare dashboard (Workers > ultron-proxy > Settings > Variables).
+# It is EMPTY by default — no internal prompt is shipped.
+[vars]
+SYSTEM_PROMPT = ""
+MODEL = "poolside/laguna-s-2.1:free"
+REASONING = "true"
+
+# The OpenRouter key is stored as a SECRET (never in this file / repo):
+#   echo "<key>" | npx wrangler secret put OPENROUTER_API_KEY
