@@ -1,13 +1,16 @@
+# Node (backend only)
 node_modules/
 .env
 *.log
 .DS_Store
 backend/data/config.local.json
 
-# Capacitor / Android build (generated in CI)
-/android/
-/node_modules/
-/www/
+# Android / Gradle
 .gradle/
+**/build/
+local.properties
 *.apk
-resources/android/
+.idea/
+*.iml
+captures/
+.cxx/

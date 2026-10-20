@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Ultron</string>
+    <string name="status_ready">جاهز</string>
+    <string name="status_thinking">يفكّر…</string>
+    <string name="status_listening">يستمع…</string>
+
+    <string name="empty_title">مرحبًا 👋</string>
+    <string name="empty_desc">اكتب رسالتك أو اضغط المايك للتحدث. فعّل أذونات الجهاز من الدرع بالأعلى لتمنح المساعد قدرات الهاتف.</string>
+
+    <string name="compose_hint">اكتب رسالة…</string>
+    <string name="think_show">عرض التفكير</string>
+
+    <string name="mic_on">المايك: مفعّل</string>
+    <string name="mic_off">المايك: مغلق</string>
+    <string name="loc_on">الموقع: مفعّل</string>
+    <string name="loc_off">الموقع: مغلق</string>
+
+    <string name="new_chat">محادثة جديدة</string>
+    <string name="settings">الإعدادات</string>
+    <string name="permissions">الأذونات</string>
+    <string name="language">اللغة</string>
+
+    <string name="perms_title">أذونات التحكم في الهاتف</string>
+    <string name="perms_sub">لا يستطيع المساعد استخدام أي قدرة قبل أن تؤكدها هنا بنفسك. فعّل ما تريد فقط.</string>
+    <string name="perm_mic_t">المايكروفون / الصوت</string>
+    <string name="perm_mic_d">يسمح بالتحدث للمساعد وبالرد الصوتي (مساعد صوتي).</string>
+    <string name="perm_loc_t">الموقع</string>
+    <string name="perm_loc_d">يسمح للمساعد بقراءة موقعك عند طلبك فقط (مثل: أين أنا؟).</string>
+    <string name="confirm">تأكيد</string>
+    <string name="close">إغلاق</string>
+    <string name="save">حفظ</string>
+
+    <string name="set_backend">عنوان الخادم الخلفي</string>
+    <string name="set_gh">ربط GitHub (توكن شخصي — يبقى على جهازك)</string>
+    <string name="gh_connect">ربط GitHub</string>
+    <string name="gh_hint">أنشئ توكنًا من github.com/settings/tokens والصقه. يُخزَّن محليًا ويُستخدم مع GitHub فقط.</string>
+    <string name="saved">تم الحفظ.</string>
+
+    <string name="err_connect">تعذّر الاتصال بالخادم. تأكد من تشغيل الـbackend ومن صحة العنوان في الإعدادات.</string>
+    <string name="mic_need_perm">فعّل إذن المايك أولًا.</string>
+    <string name="loc_disabled">(إذن الموقع غير مفعّل — فعّله من الدرع بالأعلى.)</string>
+    <string name="your_location">موقعك الحالي</string>
+</resources>

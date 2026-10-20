@@ -1,0 +1,48 @@
+package com.ultron.chat
+
+import android.content.Context
+import android.content.res.Configuration
+import java.util.Locale
+
+/** Persisted settings. */
+class Prefs(ctx: Context) {
+    private val sp = ctx.getSharedPreferences("ultron", Context.MODE_PRIVATE)
+
+    var apiBase: String
+        get() = sp.getString("api", "http://10.0.2.2:8787") ?: "http://10.0.2.2:8787"
+        set(v) { sp.edit().putString("api", v).apply() }
+
+    var ghToken: String
+        get() = sp.getString("gh", "") ?: ""
+        set(v) { sp.edit().putString("gh", v).apply() }
+
+    var lang: String
+        get() = sp.getString("lang", "ar") ?: "ar"
+        set(v) { sp.edit().putString("lang", v).apply() }
+}
+
+/** Applies the chosen app language by wrapping the base context. */
+object LocaleHelper {
+    fun wrap(ctx: Context, lang: String): Context {
+        val locale = Locale(lang)
+        Locale.setDefault(locale)
+        val config = Configuration(ctx.resources.configuration)
+        config.setLocale(locale)
+        config.setLayoutDirection(locale)
+        return ctx.createConfigurationContext(config)
+    }
+}
+
+enum class Status { READY, THINKING, LISTENING }
+
+/**
+ * One chat turn.
+ * [reasoning] is the human-readable thinking text shown in the UI.
+ * [reasoningRaw] is the untouched reasoning_details JSON, resent verbatim to the model.
+ */
+data class Msg(
+    val role: String,
+    val content: String,
+    val reasoning: String? = null,
+    val reasoningRaw: String? = null,
+)

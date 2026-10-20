@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Ultron</string>
+    <string name="status_ready">Prêt</string>
+    <string name="status_thinking">Réflexion…</string>
+    <string name="status_listening">Écoute…</string>
+
+    <string name="empty_title">Bienvenue 👋</string>
+    <string name="empty_desc">Écrivez un message ou appuyez sur le micro pour parler. Activez les autorisations de l\'appareil via le bouclier en haut.</string>
+
+    <string name="compose_hint">Message…</string>
+    <string name="think_show">Afficher le raisonnement</string>
+
+    <string name="mic_on">Micro : activé</string>
+    <string name="mic_off">Micro : désactivé</string>
+    <string name="loc_on">Position : activée</string>
+    <string name="loc_off">Position : désactivée</string>
+
+    <string name="new_chat">Nouvelle discussion</string>
+    <string name="settings">Paramètres</string>
+    <string name="permissions">Autorisations</string>
+    <string name="language">Langue</string>
+
+    <string name="perms_title">Autorisations de contrôle du téléphone</string>
+    <string name="perms_sub">L\'assistant ne peut utiliser aucune capacité avant que vous ne la confirmiez ici. N\'activez que ce que vous voulez.</string>
+    <string name="perm_mic_t">Microphone / Voix</string>
+    <string name="perm_mic_d">Permet de parler à l\'assistant et d\'obtenir des réponses vocales (assistant vocal).</string>
+    <string name="perm_loc_t">Position</string>
+    <string name="perm_loc_d">Permet à l\'assistant de lire votre position uniquement sur demande (ex. : où suis-je ?).</string>
+    <string name="confirm">Confirmer</string>
+    <string name="close">Fermer</string>
+    <string name="save">Enregistrer</string>
+
+    <string name="set_backend">URL du serveur</string>
+    <string name="set_gh">Lier GitHub (jeton personnel — reste sur votre appareil)</string>
+    <string name="gh_connect">Lier GitHub</string>
+    <string name="gh_hint">Créez un jeton sur github.com/settings/tokens et collez-le. Stocké localement, utilisé uniquement avec GitHub.</string>
+    <string name="saved">Enregistré.</string>
+
+    <string name="err_connect">Impossible de joindre le serveur. Vérifiez que le backend tourne et que l\'URL est correcte dans les Paramètres.</string>
+    <string name="mic_need_perm">Activez d\'abord l\'autorisation du micro.</string>
+    <string name="loc_disabled">(Autorisation de position désactivée — activez-la via le bouclier en haut.)</string>
+    <string name="your_location">Votre position</string>
+</resources>

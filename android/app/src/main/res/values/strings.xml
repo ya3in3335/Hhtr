@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Ultron</string>
+    <string name="status_ready">Ready</string>
+    <string name="status_thinking">Thinking…</string>
+    <string name="status_listening">Listening…</string>
+
+    <string name="empty_title">Welcome 👋</string>
+    <string name="empty_desc">Type a message or tap the mic to talk. Enable device permissions from the shield above to give the assistant phone capabilities.</string>
+
+    <string name="compose_hint">Message…</string>
+    <string name="think_show">Show thinking</string>
+
+    <string name="mic_on">Mic: on</string>
+    <string name="mic_off">Mic: off</string>
+    <string name="loc_on">Location: on</string>
+    <string name="loc_off">Location: off</string>
+
+    <string name="new_chat">New chat</string>
+    <string name="settings">Settings</string>
+    <string name="permissions">Permissions</string>
+    <string name="language">Language</string>
+
+    <string name="perms_title">Phone control permissions</string>
+    <string name="perms_sub">The assistant cannot use any capability until you confirm it here. Enable only what you want.</string>
+    <string name="perm_mic_t">Microphone / Voice</string>
+    <string name="perm_mic_d">Lets you talk to the assistant and get spoken replies (voice assistant).</string>
+    <string name="perm_loc_t">Location</string>
+    <string name="perm_loc_d">Lets the assistant read your location only when you ask (e.g. where am I?).</string>
+    <string name="confirm">Confirm</string>
+    <string name="close">Close</string>
+    <string name="save">Save</string>
+
+    <string name="set_backend">Backend URL</string>
+    <string name="set_gh">Link GitHub (personal token — stays on your device)</string>
+    <string name="gh_connect">Link GitHub</string>
+    <string name="gh_hint">Create a token at github.com/settings/tokens and paste it. Stored locally, used only with GitHub.</string>
+    <string name="saved">Saved.</string>
+
+    <string name="err_connect">Could not reach the server. Make sure the backend is running and the URL is correct in Settings.</string>
+    <string name="mic_need_perm">Enable the microphone permission first.</string>
+    <string name="loc_disabled">(Location permission is off — enable it from the shield above.)</string>
+    <string name="your_location">Your location</string>
+</resources>
