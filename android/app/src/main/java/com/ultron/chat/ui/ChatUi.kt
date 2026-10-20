@@ -33,6 +33,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.ExpandMore
@@ -106,8 +107,8 @@ fun App(vm: ChatViewModel) {
 @Composable
 private fun AmbientGlow() {
     val t = rememberInfiniteTransition(label = "amb")
-    val y by t.animateFloat(0.12f, 0.30f, infiniteRepeatable(tween(7000, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "y")
-    val a by t.animateFloat(0.18f, 0.40f, infiniteRepeatable(tween(4500, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "a")
+    val y by t.animateFloat(0.10f, 0.26f, infiniteRepeatable(tween(8000, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "y")
+    val a by t.animateFloat(0.07f, 0.16f, infiniteRepeatable(tween(5000, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "a")
     Canvas(Modifier.fillMaxSize()) {
         drawRect(
             brush = Brush.radialGradient(
@@ -118,7 +119,7 @@ private fun AmbientGlow() {
         )
         drawRect(
             brush = Brush.radialGradient(
-                colors = listOf(UltronGlow.copy(alpha = 0.10f), Color.Transparent),
+                colors = listOf(UltronGlow.copy(alpha = 0.05f), Color.Transparent),
                 center = Offset(size.width * 0.1f, size.height * 0.92f),
                 radius = size.width * 0.8f,
             )
@@ -194,11 +195,10 @@ fun ChatScreen(vm: ChatViewModel) {
                 GlassTopBar(statusText, vm.status, micOn || locOn,
                     onMenu = { scope.launch { drawerState.open() } },
                     onPerms = { showPerms = true },
-                    onLang = { showLang = true },
-                    onNew = { vm.clear() })
+                    onLang = { showLang = true })
             },
             bottomBar = {
-                Composer(input, { input = it }, { doSend(input) }, { toggleMic() }, listening)
+                Composer(input, { input = it }, { doSend(input) }, { toggleMic() }, { vm.clear() }, listening)
             },
         ) { pad ->
             Box(Modifier.padding(pad).fillMaxSize()) {
@@ -239,7 +239,7 @@ fun ChatScreen(vm: ChatViewModel) {
 @Composable
 private fun GlassTopBar(
     status: String, statusEnum: Status, permsActive: Boolean,
-    onMenu: () -> Unit, onPerms: () -> Unit, onLang: () -> Unit, onNew: () -> Unit,
+    onMenu: () -> Unit, onPerms: () -> Unit, onLang: () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -266,7 +266,6 @@ private fun GlassTopBar(
         Spacer(Modifier.weight(1f))
         GlassIcon(Icons.Filled.Security, if (permsActive) UltronRedSoft else UltronText, onPerms)
         GlassIcon(Icons.Filled.Translate, UltronText, onLang)
-        GlassIcon(Icons.Filled.Add, UltronText, onNew)
     }
 }
 
@@ -419,62 +418,71 @@ private fun TypingRow() {
 }
 
 @Composable
-private fun Composer(value: String, onValue: (String) -> Unit, onSend: () -> Unit, onMic: () -> Unit, listening: Boolean) {
+private fun Composer(value: String, onValue: (String) -> Unit, onSend: () -> Unit, onMic: () -> Unit, onNew: () -> Unit, listening: Boolean) {
     val hasText = value.isNotBlank()
-    val sendScale by animateFloatAsState(if (hasText) 1f else 0.9f, label = "send")
     val micT = rememberInfiniteTransition(label = "mic")
-    val micPulse by micT.animateFloat(0.6f, 1f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "mp")
+    val micPulse by micT.animateFloat(0.55f, 1f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "mp")
 
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Brush.verticalGradient(listOf(Color(0x001C0608), Color(0xDD140305))))
-            .padding(horizontal = 12.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
-        // mic
-        Box(
+        Column(
             Modifier
-                .size(46.dp)
-                .graphicsLayer { if (listening) { alpha = micPulse } }
-                .clip(CircleShape)
-                .background(if (listening) UltronRed else UltronGlass)
-                .border(1.dp, if (listening) UltronRed else UltronGlassBorder, CircleShape)
-                .clickable { onMic() },
-            contentAlignment = Alignment.Center,
-        ) { Icon(Icons.Filled.Mic, contentDescription = null, tint = if (listening) Color.White else UltronText, modifier = Modifier.size(22.dp)) }
-        Spacer(Modifier.size(9.dp))
-        // text field
-        Box(
-            Modifier
-                .weight(1f)
-                .clip(RoundedCornerShape(24.dp))
-                .background(UltronGlassStrong)
-                .border(1.dp, UltronGlassBorder, RoundedCornerShape(24.dp))
-                .padding(horizontal = 16.dp, vertical = 13.dp),
-            contentAlignment = Alignment.CenterStart,
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(26.dp))
+                .background(UltronInk)
+                .border(1.dp, UltronGlassBorder, RoundedCornerShape(26.dp))
+                .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
-            if (value.isEmpty()) Text(stringResource(R.string.compose_hint), color = UltronMuted, fontSize = 15.sp)
-            BasicTextField(
-                value = value, onValueChange = onValue,
-                textStyle = TextStyle(color = UltronText, fontFamily = Tajawal, fontSize = 15.sp),
-                cursorBrush = SolidColor(UltronRedSoft),
-                modifier = Modifier.fillMaxWidth(),
-            )
+            // text row
+            Box(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                if (value.isEmpty()) Text(stringResource(R.string.compose_hint), color = UltronMuted, fontSize = 16.sp)
+                BasicTextField(
+                    value = value, onValueChange = onValue,
+                    textStyle = TextStyle(color = UltronText, fontFamily = Tajawal, fontSize = 16.sp),
+                    cursorBrush = SolidColor(UltronRedSoft),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            Spacer(Modifier.size(10.dp))
+            // controls row
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RoundControl(Icons.Filled.Add, UltronText, onNew)
+                Spacer(Modifier.size(8.dp))
+                Box(
+                    Modifier
+                        .size(38.dp)
+                        .graphicsLayer { if (listening) alpha = micPulse }
+                        .clip(CircleShape)
+                        .background(if (listening) UltronRed else UltronGlass)
+                        .border(1.dp, if (listening) UltronRed else UltronGlassBorder, CircleShape)
+                        .clickable { onMic() },
+                    contentAlignment = Alignment.Center,
+                ) { Icon(Icons.Filled.Mic, contentDescription = null, tint = if (listening) Color.White else UltronText, modifier = Modifier.size(19.dp)) }
+                Spacer(Modifier.weight(1f))
+                // send up-arrow
+                Box(
+                    Modifier
+                        .size(42.dp)
+                        .shadow(if (hasText) 14.dp else 0.dp, CircleShape, spotColor = UltronRed, ambientColor = UltronRed)
+                        .clip(CircleShape)
+                        .background(if (hasText) SendBrush else Brush.linearGradient(listOf(Color(0xFF3A3238), Color(0xFF2B262B))))
+                        .clickable(enabled = hasText) { onSend() },
+                    contentAlignment = Alignment.Center,
+                ) { Icon(Icons.Filled.ArrowUpward, contentDescription = null, tint = if (hasText) Color.White else UltronMuted, modifier = Modifier.size(20.dp)) }
+            }
         }
-        Spacer(Modifier.size(9.dp))
-        // send
-        Box(
-            Modifier
-                .size(48.dp)
-                .graphicsLayer { scaleX = sendScale; scaleY = sendScale }
-                .shadow(if (hasText) 16.dp else 0.dp, CircleShape, spotColor = UltronRed, ambientColor = UltronRed)
-                .clip(CircleShape)
-                .background(SendBrush)
-                .clickable { onSend() },
-            contentAlignment = Alignment.Center,
-        ) { Icon(Icons.Filled.Send, contentDescription = null, tint = Color.White, modifier = Modifier.size(21.dp)) }
     }
+}
+
+@Composable
+private fun RoundControl(icon: androidx.compose.ui.graphics.vector.ImageVector, tint: Color, onClick: () -> Unit) {
+    Box(
+        Modifier.size(38.dp).clip(CircleShape).background(UltronGlass).border(1.dp, UltronGlassBorder, CircleShape).clickable { onClick() },
+        contentAlignment = Alignment.Center,
+    ) { Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(19.dp)) }
 }
 
 /* ---------- Bottom sheets ---------- */
