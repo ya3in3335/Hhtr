@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Ultron — لوحة الأدمن</title>
+<style>
+:root{--bg:#120212;--panel:#1a0a1a;--line:#5a1418;--red:#e11d2a;--red2:#ff4d5a;--text:#ffe9ea;--muted:#d08a8f}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;
+  background:radial-gradient(1000px 500px at 80% -10%,#3a0d11,transparent),var(--bg);color:var(--text);min-height:100vh;padding:22px}
+.wrap{max-width:720px;margin:0 auto}
+header{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.logo{width:42px;height:42px}
+h1{font-size:21px;margin:0}
+.sub{color:var(--muted);font-size:13px;margin-top:2px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px}
+label{display:block;font-weight:600;margin-bottom:8px}
+.hint{color:var(--muted);font-size:12px;margin:0 0 10px;line-height:1.6}
+input,textarea{width:100%;background:#120112;border:1px solid var(--line);color:var(--text);border-radius:12px;padding:12px 14px;font-size:15px;font-family:inherit}
+textarea{min-height:220px;resize:vertical;line-height:1.7}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+button{cursor:pointer;border:none;border-radius:12px;padding:12px 18px;font-size:15px;font-weight:700;color:#fff;background:var(--red)}
+button.ghost{background:transparent;border:1px solid var(--line);color:var(--text)}
+button:disabled{opacity:.5}
+.status{font-size:13px;margin-top:12px;min-height:18px}
+.ok{color:#7CFFA0}.err{color:var(--red2)}
+.pill{display:inline-flex;gap:6px;align-items:center;font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:4px 10px}
+svg{display:block}
+.base{font-size:11px;color:var(--muted);word-break:break-all;margin-top:10px}
+</style>
+</head>
+<body><div class="wrap">
+<header>
+<svg class="logo" viewBox="0 0 48 48"><rect x="4" y="9" width="40" height="30" rx="8" fill="#e11d2a"/><circle cx="17" cy="24" r="4" fill="#120212"/><circle cx="31" cy="24" r="4" fill="#120212"/><path d="M24 4v5" stroke="#ff4d5a" stroke-width="3" stroke-linecap="round"/><circle cx="24" cy="4" r="3" fill="#ff4d5a"/></svg>
+<div><h1>Ultron — لوحة تحكم الأدمن</h1><div class="sub">البرومبت يُحفظ في Cloudflare KV ويُطبّق فورًا. لا يوجد برومبت مسبق.</div></div>
+</header>
+
+<div class="card">
+<label for="base">عنوان الـWorker</label>
+<p class="hint">غيّره فقط إذا نقلت الـWorker. الافتراضي صحيح.</p>
+<input id="base" type="text" value="https://ultron-proxy.yacincianai.workers.dev" />
+</div>
+
+<div class="card">
+<label for="token">رمز دخول الأدمن</label>
+<p class="hint">الكلمة التي ضبطتها (مثل Ultron123). أدخلها لتحميل/حفظ البرومبت.</p>
+<div class="row"><input id="token" type="password" placeholder="رمز الأدمن" autocomplete="off" /><button class="ghost" id="load" style="flex:0 0 auto">تحميل</button></div>
+</div>
+
+<div class="card">
+<label for="prompt">البرومبت الداخلي للنموذج</label>
+<p class="hint">ما تكتبه هنا هو فقط ما يُرسل كـ system. اتركه فارغًا لعدم إرسال أي برومبت.</p>
+<textarea id="prompt" placeholder="اكتب البرومبت الداخلي هنا…"></textarea>
+<div class="row" style="margin-top:14px"><button id="save" style="flex:0 0 auto">حفظ في Cloudflare</button><span class="pill" id="meta">—</span></div>
+<div class="status" id="status"></div>
+</div>
+
+<div class="card">
+<label for="newpw">تغيير كلمة مرور الأدمن</label>
+<p class="hint">تُخزَّن الكلمة الجديدة في Cloudflare KV وتُستخدم في الدخول القادم.</p>
+<div class="row"><input id="newpw" type="password" placeholder="كلمة مرور جديدة (4 أحرف فأكثر)" autocomplete="off" /><button id="changepw" class="ghost" style="flex:0 0 auto">تغيير</button></div>
+<div class="status" id="pwstatus"></div>
+</div>
+
+</div>
+<script>
+const $=(i)=>document.getElementById(i);
+const base=()=>$("base").value.trim().replace(/\/$/,"");
+const st=(el,m,c="")=>{el.textContent=m;el.className="status "+c};
+async function load(){const t=$("token").value.trim();if(!t)return st($("status"),"أدخل الرمز أولًا.","err");
+try{const r=await fetch(base()+"/admin/prompt",{headers:{"X-Admin-Token":t}});if(!r.ok)throw new Error((await r.json()).error||r.status);
+const d=await r.json();$("prompt").value=d.prompt||"";st($("status"),"تم التحميل ✓","ok");}catch(e){st($("status"),"فشل: "+e.message,"err");}}
+async function save(){const t=$("token").value.trim();if(!t)return st($("status"),"أدخل الرمز أولًا.","err");$("save").disabled=true;
+try{const r=await fetch(base()+"/admin/prompt",{method:"POST",headers:{"Content-Type":"application/json","X-Admin-Token":t},body:JSON.stringify({prompt:$("prompt").value})});
+if(!r.ok)throw new Error((await r.json()).error||r.status);st($("status"),"تم الحفظ في Cloudflare ✓","ok");}catch(e){st($("status"),"فشل الحفظ: "+e.message,"err");}finally{$("save").disabled=false;}}
+async function changePw(){const t=$("token").value.trim();const np=$("newpw").value.trim();
+if(!t)return st($("pwstatus"),"أدخل كلمة المرور الحالية بالأعلى أولًا.","err");
+if(np.length<4)return st($("pwstatus"),"كلمة المرور الجديدة قصيرة.","err");$("changepw").disabled=true;
+try{const r=await fetch(base()+"/admin/password",{method:"POST",headers:{"Content-Type":"application/json","X-Admin-Token":t},body:JSON.stringify({password:np})});
+if(!r.ok)throw new Error((await r.json()).error||r.status);$("token").value=np;$("newpw").value="";st($("pwstatus"),"تم تغيير كلمة المرور ✓","ok");}
+catch(e){st($("pwstatus"),"فشل: "+e.message,"err");}finally{$("changepw").disabled=false;}}
+async function meta(){try{const r=await fetch(base()+"/api/meta");const m=await r.json();
+$("meta").textContent=(m.keyConfigured?"المفتاح ✓":"المفتاح ✗")+" · "+(m.promptConfigured?"برومبت مضبوط":"لا برومبت")+" · "+(m.kvBound?"KV ✓":"KV ✗");}catch{$("meta").textContent="—";}}
+$("load").onclick=load;$("save").onclick=save;$("changepw").onclick=changePw;meta();
+</script>
+</body>
+</html>
