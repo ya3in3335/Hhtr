@@ -1,0 +1,11 @@
+{
+  "appId": "com.ultron.chatbot",
+  "appName": "Ultron",
+  "webDir": "chatbot",
+  "android": {
+    "allowMixedContent": true
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}

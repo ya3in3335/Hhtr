@@ -3,3 +3,11 @@ node_modules/
 *.log
 .DS_Store
 backend/data/config.local.json
+
+# Capacitor / Android build (generated in CI)
+/android/
+/node_modules/
+/www/
+.gradle/
+*.apk
+resources/android/

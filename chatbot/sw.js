@@ -1,14 +1,14 @@
-const CACHE = "ultron-v1";
+const CACHE = "ultron-v2";
 const ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
   "./manifest.json",
-  "./icons/icon.svg",
-  "./icons/maskable.svg",
+  "./icons/ultron.png",
+  "./icons/ultron-192.png",
+  "./icons/ultron-512.png",
   "./icons/mic.svg",
-  "./icons/ultron-logo.svg",
 ];
 
 self.addEventListener("install", (e) => {
