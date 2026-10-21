@@ -72,15 +72,28 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         val c = current
         c.messages.add(Msg("user", t))
         if (c.title.isBlank()) c.title = t.take(40)
+        val idx = c.messages.size                 // index for the streaming assistant placeholder
+        c.messages.add(Msg("assistant", ""))
         busy = true
         status = Status.THINKING
         persist()
         viewModelScope.launch {
-            val res = withContext(Dispatchers.IO) { ChatApi.send(apiBase, c.messages.toList()) }
+            val history = c.messages.take(idx)    // everything up to and including the user turn
+            val sb = StringBuilder()
+            val rb = StringBuilder()
+            val res = withContext(Dispatchers.IO) {
+                ChatApi.sendStream(apiBase, history) { dc, dr ->
+                    if (dc != null) sb.append(dc)
+                    if (dr != null) rb.append(dr)
+                    if (idx < c.messages.size) {
+                        c.messages[idx] = Msg("assistant", sb.toString(), rb.toString().ifBlank { null })
+                    }
+                }
+            }
             busy = false
             status = Status.READY
-            res.onSuccess { m -> c.messages.add(m); onReply(m.content) }
-                .onFailure { c.messages.add(Msg("assistant", errText)) }
+            res.onSuccess { m -> if (idx < c.messages.size) c.messages[idx] = m; onReply(m.content) }
+                .onFailure { if (idx < c.messages.size) c.messages[idx] = Msg("assistant", errText) }
             persist()
         }
     }

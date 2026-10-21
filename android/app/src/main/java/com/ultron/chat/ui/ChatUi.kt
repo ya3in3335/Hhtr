@@ -148,8 +148,9 @@ fun ChatScreen(vm: ChatViewModel) {
     val errText = stringResource(R.string.err_connect)
     val locLabel = stringResource(R.string.your_location)
 
-    LaunchedEffect(vm.messages.size) {
-        if (vm.messages.isNotEmpty()) listState.animateScrollToItem(vm.messages.size - 1)
+    val lastLen = vm.messages.lastOrNull()?.content?.length ?: 0
+    LaunchedEffect(vm.messages.size, lastLen) {
+        if (vm.messages.isNotEmpty()) listState.scrollToItem(vm.messages.size - 1, Int.MAX_VALUE)
     }
 
     fun fire(text: String) = vm.send(WORKER_URL, text, errText) { reply -> if (micOn) host.speak(reply, prefs.lang) }
@@ -212,7 +213,6 @@ fun ChatScreen(vm: ChatViewModel) {
                         verticalArrangement = Arrangement.spacedBy(18.dp),
                     ) {
                         items(vm.messages.size) { i -> MessageItem(vm.messages[i]) }
-                        if (vm.busy) item { TypingRow() }
                     }
                 }
             }
@@ -357,7 +357,8 @@ private fun MessageItem(msg: Msg) {
                         .border(1.dp, UltronGlassBorder, RoundedCornerShape(6.dp, 20.dp, 20.dp, 20.dp))
                         .padding(horizontal = 15.dp, vertical = 12.dp)
                 ) {
-                    SelectionContainer { MarkdownText(msg.content, UltronText) }
+                    if (msg.content.isBlank()) TypingDots()
+                    else SelectionContainer { MarkdownText(msg.content, UltronText) }
                 }
                 if (!msg.reasoning.isNullOrBlank()) ReasoningBlock(msg.reasoning)
                 if (msg.content.isNotBlank()) CopyRow(msg.content)
@@ -392,27 +393,19 @@ private fun ReasoningBlock(text: String) {
 }
 
 @Composable
-private fun TypingRow() {
+private fun TypingDots() {
     val t = rememberInfiniteTransition(label = "typing")
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-        Image(painterResource(R.drawable.ultron), contentDescription = null, modifier = Modifier.size(30.dp))
-        Spacer(Modifier.size(10.dp))
-        Row(
-            Modifier
-                .clip(RoundedCornerShape(6.dp, 20.dp, 20.dp, 20.dp))
-                .background(UltronGlass)
-                .border(1.dp, UltronGlassBorder, RoundedCornerShape(6.dp, 20.dp, 20.dp, 20.dp))
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            for (i in 0..2) {
-                val a by t.animateFloat(
-                    0.3f, 1f,
-                    infiniteRepeatable(tween(700, delayMillis = i * 160, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-                    label = "d$i",
-                )
-                Box(Modifier.size(8.dp).graphicsLayer { alpha = a; scaleX = a; scaleY = a }.background(UltronRedSoft, CircleShape))
-            }
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier.padding(vertical = 2.dp),
+    ) {
+        for (i in 0..2) {
+            val a by t.animateFloat(
+                0.3f, 1f,
+                infiniteRepeatable(tween(700, delayMillis = i * 160, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+                label = "d$i",
+            )
+            Box(Modifier.size(8.dp).graphicsLayer { alpha = a; scaleX = a; scaleY = a }.background(UltronRedSoft, CircleShape))
         }
     }
 }

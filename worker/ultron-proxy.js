@@ -104,21 +104,38 @@ export default {
       messages.push(msg);
     }
 
+    const wantStream = body?.stream === true;
     const payload = { model: env.MODEL || "poolside/laguna-s-2.1:free", messages };
     if (env.REASONING !== "false") payload.reasoning = { enabled: true };
+    if (wantStream) payload.stream = true;
 
-    let data;
+    let upstream;
     try {
-      const upstream = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      upstream = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${env.OPENROUTER_API_KEY}`, "Content-Type": "application/json", "X-Title": "Ultron" },
         body: JSON.stringify(payload),
       });
-      data = await upstream.json();
-      if (!upstream.ok) return json({ error: data?.error || "OpenRouter error", data }, upstream.status);
     } catch (e) {
       return json({ error: "Failed to reach OpenRouter", detail: String(e) }, 502);
     }
+
+    // Live stream: pass the Server-Sent Events straight through.
+    if (wantStream && upstream.ok && upstream.body) {
+      return new Response(upstream.body, {
+        status: 200,
+        headers: {
+          "Content-Type": "text/event-stream; charset=utf-8",
+          "Cache-Control": "no-cache",
+          "Connection": "keep-alive",
+          ...CORS,
+        },
+      });
+    }
+
+    // Non-streaming (or an upstream error).
+    const data = await upstream.json().catch(() => ({}));
+    if (!upstream.ok) return json({ error: data?.error || "OpenRouter error", data }, upstream.status);
     const message = data?.choices?.[0]?.message ?? { role: "assistant", content: "" };
     return json({ message, usage: data?.usage ?? null });
   },
