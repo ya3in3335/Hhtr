@@ -48,6 +48,8 @@
     <string name="empty_chats">No chats yet</string>
     <string name="you">You</string>
 
+    <string name="drawer_tagline">Dark AI · always on</string>
+    <string name="search_chats">Search chats…</string>
     <string name="avatar_mode">Face mode</string>
     <string name="avatar_exit">Exit</string>
     <string name="avatar_idle">Tap to talk</string>

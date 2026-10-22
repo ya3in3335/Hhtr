@@ -48,6 +48,8 @@
     <string name="empty_chats">لا توجد محادثات بعد</string>
     <string name="you">أنت</string>
 
+    <string name="drawer_tagline">ذكاء مظلم · دائم التشغيل</string>
+    <string name="search_chats">ابحث في المحادثات…</string>
     <string name="avatar_mode">وضع الوجه</string>
     <string name="avatar_exit">خروج</string>
     <string name="avatar_idle">انقر لتتكلم</string>

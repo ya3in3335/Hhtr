@@ -48,6 +48,8 @@
     <string name="empty_chats">Aucune discussion</string>
     <string name="you">Vous</string>
 
+    <string name="drawer_tagline">IA sombre · toujours active</string>
+    <string name="search_chats">Rechercher…</string>
     <string name="avatar_mode">Mode visage</string>
     <string name="avatar_exit">Quitter</string>
     <string name="avatar_idle">Touchez pour parler</string>

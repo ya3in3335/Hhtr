@@ -40,7 +40,9 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Send
@@ -76,6 +78,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
@@ -99,6 +102,22 @@ private const val WORKER_URL = "https://ultron-proxy.yacincianai.workers.dev"
 private val BgBrush = Brush.verticalGradient(listOf(UltronBgTop, UltronBgMid, UltronBgBottom))
 private val UserBrush = Brush.linearGradient(listOf(UltronUserTop, UltronUserBottom))
 private val SendBrush = Brush.linearGradient(listOf(UltronRedSoft, UltronRed))
+
+// Glassmorphism: a frosted translucent panel — base tint + top-left sheen + lit edge.
+private val GlassSheen = Brush.linearGradient(listOf(Color(0x26FFFFFF), Color(0x0AFFFFFF), Color(0x00FFFFFF)))
+private val GlassEdge = Brush.linearGradient(listOf(Color(0x40FFFFFF), Color(0x12FFFFFF), Color(0x22FFFFFF)))
+
+/** Applies the reusable frosted-glass look to any surface. */
+private fun Modifier.glass(
+    shape: Shape,
+    tint: Color = Color(0xFF17171C),
+    alpha: Float = 0.58f,
+    border: Boolean = true,
+): Modifier = this
+    .clip(shape)
+    .background(tint.copy(alpha = alpha), shape)
+    .background(GlassSheen, shape)
+    .then(if (border) Modifier.border(1.dp, GlassEdge, shape) else Modifier)
 
 @Composable
 fun App(vm: ChatViewModel) {
@@ -148,6 +167,7 @@ fun ChatScreen(vm: ChatViewModel) {
     var showPerms by remember { mutableStateOf(false) }
     var showLang by remember { mutableStateOf(false) }
     var showAvatar by remember { mutableStateOf(false) }
+    var showGh by remember { mutableStateOf(false) }
 
     val listState = rememberLazyListState()
     val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -204,7 +224,14 @@ fun ChatScreen(vm: ChatViewModel) {
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            DrawerContent(vm) { scope.launch { drawerState.close() } }
+            DrawerContent(
+                vm,
+                onPicked = { scope.launch { drawerState.close() } },
+                onFace = { scope.launch { drawerState.close() }; showAvatar = true },
+                onPerms = { scope.launch { drawerState.close() }; showPerms = true },
+                onLang = { scope.launch { drawerState.close() }; showLang = true },
+                onGitHub = { scope.launch { drawerState.close() }; showGh = true },
+            )
         },
     ) {
     Box(Modifier.fillMaxSize().background(BgBrush)) {
@@ -227,11 +254,20 @@ fun ChatScreen(vm: ChatViewModel) {
                     EmptyState(avatarState, micOn, locOn)
                 } else {
                     Column(Modifier.fillMaxSize()) {
-                        // Compact talking head stays mounted above the conversation.
-                        AvatarWebView(
-                            state = avatarState,
-                            modifier = Modifier.fillMaxWidth().height(138.dp),
-                        )
+                        // Compact talking head stays mounted above the conversation,
+                        // framed in a frosted-glass card.
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 10.dp)
+                                .height(150.dp)
+                                .glass(RoundedCornerShape(22.dp)),
+                        ) {
+                            AvatarWebView(
+                                state = avatarState,
+                                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(22.dp)),
+                            )
+                        }
                         LazyColumn(
                             state = listState,
                             modifier = Modifier.fillMaxSize(),
@@ -256,6 +292,12 @@ fun ChatScreen(vm: ChatViewModel) {
             }, onClose = { showPerms = false })
         }
     }
+    if (showGh) {
+        ModalBottomSheet(onDismissRequest = { showGh = false }, containerColor = UltronInk,
+            sheetState = rememberModalBottomSheetState(), shape = sheetShape) {
+            GhSheet(prefs.ghToken, onSave = { prefs.ghToken = it; showGh = false }, onClose = { showGh = false })
+        }
+    }
     if (showLang) {
         ModalBottomSheet(onDismissRequest = { showLang = false }, containerColor = UltronInk, shape = sheetShape) {
             LangSheet(prefs.lang) { code -> showLang = false; host.setLocale(code) }
@@ -268,10 +310,12 @@ private fun GlassTopBar(
     status: String, statusEnum: Status, permsActive: Boolean,
     onMenu: () -> Unit, onFace: () -> Unit, onPerms: () -> Unit, onLang: () -> Unit,
 ) {
+    Column(Modifier.fillMaxWidth()) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(UltronBg)
+            .background(Brush.verticalGradient(listOf(Color(0xE60F0F13), Color(0xB30F0F13))))
+            .background(GlassSheen)
             .padding(horizontal = 12.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -292,6 +336,8 @@ private fun GlassTopBar(
         GlassIcon(Icons.Filled.Security, if (permsActive) UltronRedSoft else UltronMuted, onPerms)
         GlassIcon(Icons.Filled.Translate, UltronMuted, onLang)
     }
+        Box(Modifier.fillMaxWidth().height(1.dp).background(UltronGlassBorder))
+    }
 }
 
 @Composable
@@ -308,9 +354,7 @@ private fun GlassIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, tin
         Modifier
             .padding(start = 6.dp)
             .size(40.dp)
-            .clip(RoundedCornerShape(13.dp))
-            .background(UltronGlass)
-            .border(1.dp, UltronGlassBorder, RoundedCornerShape(13.dp))
+            .glass(RoundedCornerShape(13.dp))
             .clickable { onClick() },
         contentAlignment = Alignment.Center,
     ) { Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp)) }
@@ -421,8 +465,7 @@ fun AvatarScreen(vm: ChatViewModel, onExit: () -> Unit) {
                 .align(Alignment.TopEnd)
                 .padding(16.dp)
                 .size(46.dp)
-                .clip(CircleShape)
-                .background(UltronGlass)
+                .glass(CircleShape)
                 .clickable { onExit() },
             contentAlignment = Alignment.Center,
         ) {
@@ -439,11 +482,13 @@ fun AvatarScreen(vm: ChatViewModel, onExit: () -> Unit) {
 
 @Composable
 private fun Pill(text: String, on: Boolean) {
+    val shape = RoundedCornerShape(999.dp)
     Box(
         Modifier
-            .clip(RoundedCornerShape(999.dp))
-            .background(if (on) Color(0x1A6BE08A) else UltronGlass)
-            .border(1.dp, if (on) Color(0x556BE08A) else UltronGlassBorder, RoundedCornerShape(999.dp))
+            .then(
+                if (on) Modifier.clip(shape).background(Color(0x1A6BE08A)).border(1.dp, Color(0x556BE08A), shape)
+                else Modifier.glass(shape)
+            )
             .padding(horizontal = 12.dp, vertical = 6.dp)
     ) { Text(text, color = if (on) Color(0xFF8CF0A6) else UltronMuted, fontSize = 11.sp) }
 }
@@ -485,9 +530,7 @@ private fun ReasoningBlock(text: String) {
     Column(
         Modifier
             .padding(top = 8.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(Color(0x0DFFFFFF))
-            .border(1.dp, UltronLine, RoundedCornerShape(14.dp))
+            .glass(RoundedCornerShape(14.dp), alpha = 0.40f)
     ) {
         Row(
             Modifier.fillMaxWidth().clickable { open = !open }.padding(horizontal = 13.dp, vertical = 9.dp),
@@ -535,9 +578,8 @@ private fun Composer(value: String, onValue: (String) -> Unit, onSend: () -> Uni
         Column(
             Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(26.dp))
-                .background(UltronInk)
-                .border(1.dp, UltronGlassBorder, RoundedCornerShape(26.dp))
+                .shadow(18.dp, RoundedCornerShape(26.dp), spotColor = Color.Black, ambientColor = Color.Black)
+                .glass(RoundedCornerShape(26.dp), tint = Color(0xFF151519), alpha = 0.66f)
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
             // text row
@@ -559,9 +601,10 @@ private fun Composer(value: String, onValue: (String) -> Unit, onSend: () -> Uni
                     Modifier
                         .size(38.dp)
                         .graphicsLayer { if (listening) alpha = micPulse }
-                        .clip(CircleShape)
-                        .background(if (listening) UltronRed else UltronGlass)
-                        .border(1.dp, if (listening) UltronRed else UltronGlassBorder, CircleShape)
+                        .then(
+                            if (listening) Modifier.clip(CircleShape).background(UltronRed).border(1.dp, UltronRed, CircleShape)
+                            else Modifier.glass(CircleShape)
+                        )
                         .clickable { onMic() },
                     contentAlignment = Alignment.Center,
                 ) { Icon(Icons.Filled.Mic, contentDescription = null, tint = if (listening) Color.White else UltronText, modifier = Modifier.size(19.dp)) }
@@ -584,7 +627,7 @@ private fun Composer(value: String, onValue: (String) -> Unit, onSend: () -> Uni
 @Composable
 private fun RoundControl(icon: androidx.compose.ui.graphics.vector.ImageVector, tint: Color, onClick: () -> Unit) {
     Box(
-        Modifier.size(38.dp).clip(CircleShape).background(UltronGlass).border(1.dp, UltronGlassBorder, CircleShape).clickable { onClick() },
+        Modifier.size(38.dp).glass(CircleShape).clickable { onClick() },
         contentAlignment = Alignment.Center,
     ) { Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(19.dp)) }
 }
@@ -624,8 +667,7 @@ private fun PermsSheet(micInit: Boolean, locInit: Boolean, onConfirm: (Boolean, 
 @Composable
 private fun PermRow(title: String, desc: String, checked: Boolean, onCheck: (Boolean) -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(UltronGlass)
-            .border(1.dp, UltronGlassBorder, RoundedCornerShape(16.dp)).padding(14.dp),
+        Modifier.fillMaxWidth().glass(RoundedCornerShape(16.dp)).padding(14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
@@ -696,30 +738,121 @@ private fun CopyRow(text: String) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DrawerContent(vm: ChatViewModel, onPicked: () -> Unit) {
-    ModalDrawerSheet(drawerContainerColor = UltronInk) {
-        Column(Modifier.fillMaxSize().padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Image(painterResource(R.drawable.ultron), contentDescription = null, modifier = Modifier.size(30.dp))
-                Spacer(Modifier.size(10.dp))
-                Text("ULTRON", color = UltronText, fontWeight = FontWeight.Bold, fontSize = 17.sp, letterSpacing = 2.sp)
-            }
-            Spacer(Modifier.size(16.dp))
-            GradientButton(stringResource(R.string.new_chat), Modifier.fillMaxWidth()) { vm.newChat(); onPicked() }
-            Spacer(Modifier.size(18.dp))
-            Text(stringResource(R.string.chats), color = UltronMuted, fontSize = 12.sp, letterSpacing = 1.sp)
-            Spacer(Modifier.size(8.dp))
-            if (vm.conversations.all { it.title.isBlank() && it.messages.isEmpty() }) {
-                Text(stringResource(R.string.empty_chats), color = UltronMuted, fontSize = 13.sp, modifier = Modifier.padding(vertical = 10.dp))
-            }
-            LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                items(vm.conversations.size) { i ->
-                    val c = vm.conversations[i]
-                    ChatRow(c, c.id == vm.currentId, onClick = { vm.selectChat(c.id); onPicked() }, onDelete = { vm.deleteChat(c.id) })
+private fun DrawerContent(
+    vm: ChatViewModel,
+    onPicked: () -> Unit,
+    onFace: () -> Unit,
+    onPerms: () -> Unit,
+    onLang: () -> Unit,
+    onGitHub: () -> Unit,
+) {
+    var query by remember { mutableStateOf("") }
+    ModalDrawerSheet(drawerContainerColor = Color.Transparent, drawerTonalElevation = 0.dp) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(Brush.verticalGradient(listOf(Color(0xF0151519), Color(0xF00B0B0F))))
+                .background(GlassSheen),
+        ) {
+            Column(Modifier.fillMaxSize().padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(42.dp).glass(CircleShape), contentAlignment = Alignment.Center) {
+                        Image(painterResource(R.drawable.ultron), contentDescription = null, modifier = Modifier.size(32.dp))
+                    }
+                    Spacer(Modifier.size(12.dp))
+                    Column {
+                        Text("ULTRON", color = UltronText, fontWeight = FontWeight.Bold, fontSize = 18.sp, letterSpacing = 3.sp)
+                        Text(stringResource(R.string.drawer_tagline), color = UltronMuted, fontSize = 11.sp)
+                    }
                 }
+                Spacer(Modifier.size(16.dp))
+                GradientButton(stringResource(R.string.new_chat), Modifier.fillMaxWidth()) { vm.newChat(); onPicked() }
+                Spacer(Modifier.size(14.dp))
+                // Search chats
+                Row(
+                    Modifier.fillMaxWidth().glass(RoundedCornerShape(14.dp)).padding(horizontal = 12.dp, vertical = 11.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Filled.Search, contentDescription = null, tint = UltronMuted, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.size(8.dp))
+                    Box(Modifier.weight(1f)) {
+                        if (query.isEmpty()) Text(stringResource(R.string.search_chats), color = UltronMuted, fontSize = 14.sp)
+                        BasicTextField(
+                            value = query, onValueChange = { query = it }, singleLine = true,
+                            textStyle = TextStyle(color = UltronText, fontFamily = Tajawal, fontSize = 14.sp),
+                            cursorBrush = SolidColor(UltronRedSoft),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+                Spacer(Modifier.size(14.dp))
+                Text(stringResource(R.string.chats), color = UltronMuted, fontSize = 12.sp, letterSpacing = 1.sp)
+                Spacer(Modifier.size(8.dp))
+                val shown = vm.conversations.filter {
+                    query.isBlank() || it.title.contains(query.trim(), ignoreCase = true)
+                }
+                if (shown.isEmpty() || shown.all { it.title.isBlank() && it.messages.isEmpty() }) {
+                    Text(stringResource(R.string.empty_chats), color = UltronMuted, fontSize = 13.sp, modifier = Modifier.padding(vertical = 10.dp))
+                }
+                LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    items(shown.size) { i ->
+                        val c = shown[i]
+                        ChatRow(c, c.id == vm.currentId, onClick = { vm.selectChat(c.id); onPicked() }, onDelete = { vm.deleteChat(c.id) })
+                    }
+                }
+                Spacer(Modifier.size(10.dp))
+                Box(Modifier.fillMaxWidth().height(1.dp).background(UltronGlassBorder))
+                Spacer(Modifier.size(8.dp))
+                DrawerActionRow(Icons.Filled.Face, stringResource(R.string.avatar_mode), onFace)
+                DrawerActionRow(Icons.Filled.Security, stringResource(R.string.permissions), onPerms)
+                DrawerActionRow(Icons.Filled.Translate, stringResource(R.string.language), onLang)
+                DrawerActionRow(Icons.Filled.Link, stringResource(R.string.gh_connect), onGitHub)
             }
         }
+    }
+}
+
+@Composable
+private fun DrawerActionRow(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { onClick() }.padding(vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(36.dp).glass(RoundedCornerShape(11.dp)), contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = null, tint = UltronText, modifier = Modifier.size(18.dp))
+        }
+        Spacer(Modifier.size(12.dp))
+        Text(label, color = UltronText, fontSize = 14.sp)
+    }
+}
+
+@Composable
+private fun GhSheet(initial: String, onSave: (String) -> Unit, onClose: () -> Unit) {
+    var token by remember { mutableStateOf(initial) }
+    Column(Modifier.padding(20.dp)) {
+        SheetHandle()
+        Text(stringResource(R.string.gh_connect), color = UltronText, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+        Spacer(Modifier.size(6.dp))
+        Text(stringResource(R.string.gh_hint), color = UltronMuted, fontSize = 12.sp, lineHeight = 18.sp)
+        Spacer(Modifier.size(14.dp))
+        Box(Modifier.fillMaxWidth().glass(RoundedCornerShape(14.dp)).padding(horizontal = 14.dp, vertical = 14.dp)) {
+            if (token.isEmpty()) Text(stringResource(R.string.set_gh), color = UltronMuted, fontSize = 14.sp)
+            BasicTextField(
+                value = token, onValueChange = { token = it }, singleLine = true,
+                textStyle = TextStyle(color = UltronText, fontFamily = Tajawal, fontSize = 14.sp),
+                cursorBrush = SolidColor(UltronRedSoft),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        Spacer(Modifier.size(16.dp))
+        Row {
+            TextButton(onClick = onClose, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.close), color = UltronText) }
+            Spacer(Modifier.size(10.dp))
+            GradientButton(stringResource(R.string.save), Modifier.weight(1f)) { onSave(token.trim()) }
+        }
+        Spacer(Modifier.size(10.dp))
     }
 }
 
