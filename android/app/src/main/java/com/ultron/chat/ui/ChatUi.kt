@@ -290,20 +290,12 @@ private fun GlassIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, tin
 
 @Composable
 private fun EmptyState(micOn: Boolean, locOn: Boolean) {
-    val t = rememberInfiniteTransition(label = "empty")
-    val scale by t.animateFloat(0.95f, 1.08f, infiniteRepeatable(tween(2600, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "s")
-    val glow by t.animateFloat(0.10f, 0.26f, infiniteRepeatable(tween(2600, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "g")
     Column(
         modifier = Modifier.fillMaxSize().padding(34.dp),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            Canvas(Modifier.size(200.dp)) {
-                drawCircle(Brush.radialGradient(listOf(UltronGlow.copy(alpha = glow), Color.Transparent)), radius = size.minDimension / 2f)
-            }
-            Image(painterResource(R.drawable.ultron), contentDescription = null, modifier = Modifier.size(96.dp).graphicsLayer { scaleX = scale; scaleY = scale })
-        }
-        Spacer(Modifier.size(20.dp))
+        Head3D(size = 180.dp)
+        Spacer(Modifier.size(18.dp))
         Text(stringResource(R.string.empty_title), color = UltronText, fontWeight = FontWeight.Bold, fontSize = 26.sp)
         Spacer(Modifier.size(10.dp))
         Text(stringResource(R.string.empty_desc), color = UltronMuted, fontSize = 14.sp, lineHeight = 21.sp)

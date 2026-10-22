@@ -125,17 +125,20 @@ class MainActivity : ComponentActivity(), Host {
         val clean = text.replace(Regex("[*`#>_]"), "").trim()
         if (clean.isEmpty()) return
         val locale = Locale(lang)
+        // Deep "monster" voice: low pitch + slightly slower rate.
+        fun play(engine: TextToSpeech) {
+            engine.language = locale
+            engine.setPitch(0.6f)
+            engine.setSpeechRate(0.92f)
+            engine.speak(clean, TextToSpeech.QUEUE_FLUSH, null, "ultron")
+        }
         val t = tts
         if (t == null) {
             tts = TextToSpeech(this) { status ->
-                if (status == TextToSpeech.SUCCESS) {
-                    tts?.language = locale
-                    tts?.speak(clean, TextToSpeech.QUEUE_FLUSH, null, "ultron")
-                }
+                if (status == TextToSpeech.SUCCESS) tts?.let { play(it) }
             }
         } else {
-            t.language = locale
-            t.speak(clean, TextToSpeech.QUEUE_FLUSH, null, "ultron")
+            play(t)
         }
     }
 
