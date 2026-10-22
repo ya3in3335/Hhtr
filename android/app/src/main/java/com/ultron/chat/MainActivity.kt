@@ -10,6 +10,7 @@ import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -17,6 +18,7 @@ import androidx.activity.viewModels
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.core.content.ContextCompat
 import com.ultron.chat.ui.App
+import com.ultron.chat.ui.AvatarBus
 import com.ultron.chat.ui.Host
 import com.ultron.chat.ui.LocalHost
 import java.util.Locale
@@ -26,6 +28,16 @@ class MainActivity : ComponentActivity(), Host {
     private val vm: ChatViewModel by viewModels()
     private var recognizer: SpeechRecognizer? = null
     private var tts: TextToSpeech? = null
+
+    /** Drives the 3D avatar's lips: speaking while an utterance plays, idle otherwise. */
+    private val avatarSpeechListener = object : UtteranceProgressListener() {
+        override fun onStart(utteranceId: String?) { runOnUiThread { AvatarBus.speaking = true } }
+        override fun onDone(utteranceId: String?) { runOnUiThread { AvatarBus.speaking = false } }
+        @Deprecated("deprecated in API 21")
+        override fun onError(utteranceId: String?) { runOnUiThread { AvatarBus.speaking = false } }
+        override fun onError(utteranceId: String?, errorCode: Int) { runOnUiThread { AvatarBus.speaking = false } }
+        override fun onStop(utteranceId: String?, interrupted: Boolean) { runOnUiThread { AvatarBus.speaking = false } }
+    }
 
     private var pendingWantMic = false
     private var pendingWantLoc = false
@@ -135,7 +147,10 @@ class MainActivity : ComponentActivity(), Host {
         val t = tts
         if (t == null) {
             tts = TextToSpeech(this) { status ->
-                if (status == TextToSpeech.SUCCESS) tts?.let { play(it) }
+                if (status == TextToSpeech.SUCCESS) tts?.let {
+                    it.setOnUtteranceProgressListener(avatarSpeechListener)
+                    play(it)
+                }
             }
         } else {
             play(t)

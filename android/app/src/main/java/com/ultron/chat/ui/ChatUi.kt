@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -182,6 +183,14 @@ fun ChatScreen(vm: ChatViewModel) {
         Status.LISTENING -> stringResource(R.string.status_listening)
     }
 
+    // Drives the 3D head: speaking overrides everything, else follow chat status.
+    val avatarState = when {
+        AvatarBus.speaking -> "speaking"
+        vm.status == Status.THINKING -> "thinking"
+        vm.status == Status.LISTENING -> "listening"
+        else -> "idle"
+    }
+
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
@@ -204,15 +213,22 @@ fun ChatScreen(vm: ChatViewModel) {
         ) { pad ->
             Box(Modifier.padding(pad).fillMaxSize()) {
                 if (vm.messages.isEmpty()) {
-                    EmptyState(micOn, locOn)
+                    EmptyState(avatarState, micOn, locOn)
                 } else {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(18.dp),
-                    ) {
-                        items(vm.messages.size) { i -> MessageItem(vm.messages[i]) }
+                    Column(Modifier.fillMaxSize()) {
+                        // Compact talking head stays mounted above the conversation.
+                        AvatarWebView(
+                            state = avatarState,
+                            modifier = Modifier.fillMaxWidth().height(138.dp),
+                        )
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(18.dp),
+                        ) {
+                            items(vm.messages.size) { i -> MessageItem(vm.messages[i]) }
+                        }
                     }
                 }
             }
@@ -289,12 +305,12 @@ private fun GlassIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, tin
 }
 
 @Composable
-private fun EmptyState(micOn: Boolean, locOn: Boolean) {
+private fun EmptyState(avatarState: String, micOn: Boolean, locOn: Boolean) {
     Column(
         modifier = Modifier.fillMaxSize().padding(34.dp),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
     ) {
-        Head3D(size = 180.dp)
+        AvatarWebView(state = avatarState, modifier = Modifier.size(248.dp))
         Spacer(Modifier.size(18.dp))
         Text(stringResource(R.string.empty_title), color = UltronText, fontWeight = FontWeight.Bold, fontSize = 26.sp)
         Spacer(Modifier.size(10.dp))
