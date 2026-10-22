@@ -31,10 +31,111 @@ async function getAdminPw(env) {
   return env.ADMIN_TOKEN || "";
 }
 
+// ===== Edge TTS (Microsoft online neural voices) =====
+const EDGE_TOKEN = "6A5AA1D4EAFF4E9FB37E23D68491D6F4";
+const EDGE_WSS = "wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1";
+const EDGE_UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0";
+
+function ttsVoice(lang) {
+  switch (lang) {
+    case "ar": return { voice: "ar-SA-HamedNeural", xml: "ar-SA" };
+    case "fr": return { voice: "fr-FR-HenriNeural", xml: "fr-FR" };
+    default: return { voice: "en-US-ChristopherNeural", xml: "en-US" };
+  }
+}
+function uuidHex() { return crypto.randomUUID().replace(/-/g, ""); }
+function xmlEsc(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+}
+async function secMsGec() {
+  const ticks = (BigInt(Math.floor(Date.now() / 1000) + 11644473600)) * 10000000n;
+  const rounded = ticks - (ticks % 3000000000n);
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(rounded.toString() + EDGE_TOKEN));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("").toUpperCase();
+}
+async function synthEdge(text, lang, pitch, rate) {
+  const { voice, xml } = ttsVoice(lang);
+  const sec = await secMsGec();
+  const connId = uuidHex();
+  const url =
+    `${EDGE_WSS}?TrustedClientToken=${EDGE_TOKEN}&Sec-MS-GEC=${sec}&Sec-MS-GEC-Version=1-130.0.2849.68&ConnectionId=${connId}`
+      .replace("wss://", "https://");
+  const resp = await fetch(url, {
+    headers: {
+      Upgrade: "websocket",
+      "User-Agent": EDGE_UA,
+      Origin: "https://azure.microsoft.com",
+      "Accept-Encoding": "gzip, deflate, br",
+      "Accept-Language": "en-US,en;q=0.9",
+      Pragma: "no-cache",
+      "Cache-Control": "no-cache",
+    },
+  });
+  const ws = resp.webSocket;
+  if (!ws) throw new Error("No WebSocket from Edge (status " + resp.status + ")");
+  ws.accept();
+
+  const config = `Content-Type:application/json; charset=utf-8\r\nPath:speech.config\r\n\r\n{"context":{"synthesis":{"audio":{"metadataoptions":{"sentenceBoundaryEnabled":"false","wordBoundaryEnabled":"false"},"outputFormat":"audio-24khz-48kbitrate-mono-mp3"}}}}`;
+  const ssml =
+    `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='${xml}'>` +
+    `<voice name='${voice}'><prosody pitch='${pitch}' rate='${rate}'>${xmlEsc(text)}</prosody></voice></speak>`;
+  const ssmlMsg =
+    `X-RequestId:${uuidHex()}\r\nContent-Type:application/ssml+xml\r\nX-Timestamp:${new Date().toString()}\r\nPath:ssml\r\n\r\n${ssml}`;
+
+  const chunks = [];
+  const done = new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("tts timeout")), 25000);
+    ws.addEventListener("message", (ev) => {
+      const d = ev.data;
+      if (typeof d === "string") {
+        if (d.includes("Path:turn.end")) { clearTimeout(timer); resolve(); }
+      } else {
+        const bytes = new Uint8Array(d);
+        if (bytes.length > 2) {
+          const headerLen = (bytes[0] << 8) | bytes[1];
+          const audio = bytes.subarray(2 + headerLen);
+          if (audio.length) chunks.push(audio);
+        }
+      }
+    });
+    ws.addEventListener("close", () => { clearTimeout(timer); resolve(); });
+    ws.addEventListener("error", () => { clearTimeout(timer); reject(new Error("ws error")); });
+  });
+
+  ws.send(config);
+  ws.send(ssmlMsg);
+  await done;
+  try { ws.close(); } catch (e) {}
+
+  const total = chunks.reduce((n, c) => n + c.length, 0);
+  const out = new Uint8Array(total);
+  let off = 0;
+  for (const c of chunks) { out.set(c, off); off += c.length; }
+  return out;
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
     const url = new URL(request.url);
+
+    // ---- Edge TTS: POST { text, lang?, pitch?, rate? } -> audio/mpeg ----
+    if (url.pathname === "/api/tts" && request.method === "POST") {
+      let body; try { body = await request.json(); } catch { return json({ error: "bad json" }, 400); }
+      const text = (body?.text ?? "").toString().slice(0, 2000);
+      if (!text.trim()) return json({ error: "empty text" }, 400);
+      const lang = (body?.lang ?? "ar").toString();
+      const pitch = (body?.pitch ?? "-40%").toString();
+      const rate = (body?.rate ?? "-8%").toString();
+      try {
+        const audio = await synthEdge(text, lang, pitch, rate);
+        if (!audio.length) return json({ error: "no audio produced" }, 502);
+        return new Response(audio, { status: 200, headers: { "Content-Type": "audio/mpeg", "Cache-Control": "no-store", ...CORS } });
+      } catch (e) {
+        return json({ error: "tts failed", detail: String(e) }, 502);
+      }
+    }
 
     // ---- Admin page (static UI served by the Worker) ----
     if (url.pathname === "/admin" || url.pathname === "/admin/") {
