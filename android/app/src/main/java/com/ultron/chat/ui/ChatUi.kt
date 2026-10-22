@@ -107,8 +107,8 @@ fun App(vm: ChatViewModel) {
 @Composable
 private fun AmbientGlow() {
     val t = rememberInfiniteTransition(label = "amb")
-    val y by t.animateFloat(0.10f, 0.26f, infiniteRepeatable(tween(8000, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "y")
-    val a by t.animateFloat(0.07f, 0.16f, infiniteRepeatable(tween(5000, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "a")
+    val y by t.animateFloat(0.06f, 0.20f, infiniteRepeatable(tween(9000, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "y")
+    val a by t.animateFloat(0.04f, 0.10f, infiniteRepeatable(tween(6000, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "a")
     Canvas(Modifier.fillMaxSize()) {
         drawRect(
             brush = Brush.radialGradient(
@@ -244,19 +244,16 @@ private fun GlassTopBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Brush.verticalGradient(listOf(Color(0xCC1C0608), Color(0x001C0608))))
+            .background(UltronBg)
             .padding(horizontal = 12.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         GlassIcon(Icons.Filled.Menu, UltronText, onMenu)
-        Spacer(Modifier.size(6.dp))
-        Box(contentAlignment = Alignment.Center) {
-            Box(Modifier.size(42.dp).background(Brush.radialGradient(listOf(UltronGlow.copy(alpha = .5f), Color.Transparent))))
-            Image(painterResource(R.drawable.ultron), contentDescription = null, modifier = Modifier.size(36.dp))
-        }
-        Spacer(Modifier.size(11.dp))
+        Spacer(Modifier.size(10.dp))
+        Image(painterResource(R.drawable.ultron), contentDescription = null, modifier = Modifier.size(28.dp))
+        Spacer(Modifier.size(10.dp))
         Column {
-            Text("ULTRON", color = UltronText, fontWeight = FontWeight.Bold, fontSize = 18.sp, letterSpacing = 2.sp)
+            Text("Ultron", color = UltronText, fontWeight = FontWeight.SemiBold, fontSize = 18.sp)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 StatusDot(statusEnum)
                 Spacer(Modifier.size(5.dp))
@@ -264,8 +261,8 @@ private fun GlassTopBar(
             }
         }
         Spacer(Modifier.weight(1f))
-        GlassIcon(Icons.Filled.Security, if (permsActive) UltronRedSoft else UltronText, onPerms)
-        GlassIcon(Icons.Filled.Translate, UltronText, onLang)
+        GlassIcon(Icons.Filled.Security, if (permsActive) UltronRedSoft else UltronMuted, onPerms)
+        GlassIcon(Icons.Filled.Translate, UltronMuted, onLang)
     }
 }
 
@@ -295,7 +292,7 @@ private fun GlassIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, tin
 private fun EmptyState(micOn: Boolean, locOn: Boolean) {
     val t = rememberInfiniteTransition(label = "empty")
     val scale by t.animateFloat(0.95f, 1.08f, infiniteRepeatable(tween(2600, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "s")
-    val glow by t.animateFloat(0.3f, 0.6f, infiniteRepeatable(tween(2200, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "g")
+    val glow by t.animateFloat(0.10f, 0.26f, infiniteRepeatable(tween(2600, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "g")
     Column(
         modifier = Modifier.fillMaxSize().padding(34.dp),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
@@ -306,10 +303,10 @@ private fun EmptyState(micOn: Boolean, locOn: Boolean) {
             }
             Image(painterResource(R.drawable.ultron), contentDescription = null, modifier = Modifier.size(96.dp).graphicsLayer { scaleX = scale; scaleY = scale })
         }
-        Spacer(Modifier.size(18.dp))
-        Text(stringResource(R.string.empty_title), color = UltronText, fontWeight = FontWeight.Bold, fontSize = 22.sp)
-        Spacer(Modifier.size(8.dp))
-        Text(stringResource(R.string.empty_desc), color = UltronMuted, fontSize = 13.sp)
+        Spacer(Modifier.size(20.dp))
+        Text(stringResource(R.string.empty_title), color = UltronText, fontWeight = FontWeight.Bold, fontSize = 26.sp)
+        Spacer(Modifier.size(10.dp))
+        Text(stringResource(R.string.empty_desc), color = UltronMuted, fontSize = 14.sp, lineHeight = 21.sp)
         Spacer(Modifier.size(16.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Pill(if (micOn) stringResource(R.string.mic_on) else stringResource(R.string.mic_off), micOn)
@@ -335,31 +332,23 @@ private fun MessageItem(msg: Msg) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             Box(
                 Modifier
-                    .widthIn(max = 300.dp)
-                    .shadow(14.dp, RoundedCornerShape(20.dp, 20.dp, 6.dp, 20.dp), spotColor = UltronRed, ambientColor = UltronRed)
-                    .clip(RoundedCornerShape(20.dp, 20.dp, 6.dp, 20.dp))
+                    .widthIn(max = 320.dp)
+                    .shadow(10.dp, RoundedCornerShape(22.dp, 22.dp, 8.dp, 22.dp), spotColor = UltronRed.copy(alpha = .55f), ambientColor = Color.Transparent)
+                    .clip(RoundedCornerShape(22.dp, 22.dp, 8.dp, 22.dp))
                     .background(UserBrush)
-                    .padding(horizontal = 15.dp, vertical = 11.dp)
-            ) { Text(msg.content, color = Color.White, fontSize = 15.sp, lineHeight = 22.sp) }
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+            ) { Text(msg.content, color = Color.White, fontSize = 16.sp, lineHeight = 24.sp) }
         }
     } else {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-            Box(contentAlignment = Alignment.Center) {
-                Canvas(Modifier.size(38.dp)) { drawCircle(Brush.radialGradient(listOf(UltronGlow.copy(alpha = .45f), Color.Transparent)), radius = size.minDimension / 2f) }
-                Image(painterResource(R.drawable.ultron), contentDescription = null, modifier = Modifier.size(30.dp))
-            }
-            Spacer(Modifier.size(10.dp))
-            Column(Modifier.weight(1f)) {
-                Box(
-                    Modifier
-                        .clip(RoundedCornerShape(6.dp, 20.dp, 20.dp, 20.dp))
-                        .background(UltronGlass)
-                        .border(1.dp, UltronGlassBorder, RoundedCornerShape(6.dp, 20.dp, 20.dp, 20.dp))
-                        .padding(horizontal = 15.dp, vertical = 12.dp)
-                ) {
-                    if (msg.content.isBlank()) TypingDots()
-                    else SelectionContainer { MarkdownText(msg.content, UltronText) }
-                }
+            Box(
+                Modifier.size(30.dp).clip(CircleShape).background(UltronSurface2).border(1.dp, UltronGlassBorder, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) { Image(painterResource(R.drawable.ultron), contentDescription = null, modifier = Modifier.size(22.dp)) }
+            Spacer(Modifier.size(12.dp))
+            Column(Modifier.weight(1f).padding(top = 3.dp)) {
+                if (msg.content.isBlank()) TypingDots()
+                else SelectionContainer { MarkdownText(msg.content, UltronText) }
                 if (!msg.reasoning.isNullOrBlank()) ReasoningBlock(msg.reasoning)
                 if (msg.content.isNotBlank()) CopyRow(msg.content)
             }

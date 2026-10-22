@@ -11,27 +11,26 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import com.ultron.chat.R
 
-// Brand palette
-val UltronRed = Color(0xFFE11D2A)
-val UltronRedSoft = Color(0xFFFF4D5A)
-val UltronBg = Color(0xFF120202)
-val UltronSurface = Color(0xFF1C0608)
-val UltronSurface2 = Color(0xFF270A0D)
-val UltronLine = Color(0xFF4E161B)
-val UltronText = Color(0xFFF4E9EA)
-val UltronMuted = Color(0xFFC9969B)
+// Modern 2026 palette — neutral dark, one vivid accent, hairline borders.
+val UltronRed = Color(0xFFFB2C47)          // vivid accent
+val UltronRedSoft = Color(0xFFFF5A72)
+val UltronBg = Color(0xFF0B0B0D)
+val UltronSurface = Color(0xFF151518)
+val UltronSurface2 = Color(0xFF1E1E22)
+val UltronLine = Color(0xFF2A2A30)
+val UltronText = Color(0xFFF3F3F5)
+val UltronMuted = Color(0xFF9B9BA6)
 
-// Extended palette — clean, Claude-inspired dark with a whisper of warmth
-val UltronBgTop = Color(0xFF191316)
-val UltronBgMid = Color(0xFF120E10)
-val UltronBgBottom = Color(0xFF0A080A)
-val UltronGlow = Color(0xFFE11D2A)
-val UltronUserTop = Color(0xFFF03340)
-val UltronUserBottom = Color(0xFFBE1521)
-val UltronGlass = Color(0xFF161616)        // near-black fill for cards/inputs
-val UltronGlassStrong = Color(0xFF1C1C1C)  // slightly lighter gray fill
-val UltronGlassBorder = Color(0x4DE11D2A)  // light red corners/borders
-val UltronInk = Color(0xFF121212)          // black/gray inside the input box + sheets
+val UltronBgTop = Color(0xFF131316)
+val UltronBgMid = Color(0xFF0D0D10)
+val UltronBgBottom = Color(0xFF090909)
+val UltronGlow = Color(0xFFFB2C47)
+val UltronUserTop = Color(0xFFFB2C47)
+val UltronUserBottom = Color(0xFFDC1E38)
+val UltronGlass = Color(0xFF16161A)        // neutral card/button fill
+val UltronGlassStrong = Color(0xFF1E1E23)
+val UltronGlassBorder = Color(0x14FFFFFF)  // hairline neutral border
+val UltronInk = Color(0xFF151518)          // composer / sheet surface
 
 val Tajawal = FontFamily(
     Font(R.font.tajawal_regular, FontWeight.Normal),
