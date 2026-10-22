@@ -14,3 +14,6 @@ local.properties
 *.iml
 captures/
 .cxx/
+
+# Downloaded CI build artifacts (APKs pulled locally for delivery)
+dist/
