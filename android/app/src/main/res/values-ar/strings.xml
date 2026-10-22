@@ -47,4 +47,9 @@
     <string name="copied">تم النسخ ✓</string>
     <string name="empty_chats">لا توجد محادثات بعد</string>
     <string name="you">أنت</string>
+
+    <string name="avatar_mode">وضع الوجه</string>
+    <string name="avatar_exit">خروج</string>
+    <string name="avatar_idle">انقر لتتكلم</string>
+    <string name="avatar_need_mic">فعّل الميكروفون لتتحدث مع ألترون.</string>
 </resources>

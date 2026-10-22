@@ -12,6 +12,8 @@ interface Host {
     fun startListening(lang: String, onText: (String) -> Unit, onEnd: () -> Unit)
     fun stopListening()
     fun speak(text: String, lang: String)
+    /** Cuts any in-progress spoken reply immediately. */
+    fun stopSpeaking()
 
     /** Reads the last known location (null if unavailable / not permitted). */
     fun lastLocation(cb: (lat: Double?, lon: Double?) -> Unit)

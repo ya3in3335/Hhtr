@@ -157,6 +157,11 @@ class MainActivity : ComponentActivity(), Host {
         }
     }
 
+    override fun stopSpeaking() {
+        try { tts?.stop() } catch (_: Exception) {}
+        AvatarBus.speaking = false
+    }
+
     override fun lastLocation(cb: (Double?, Double?) -> Unit) {
         if (!locGranted()) { cb(null, null); return }
         try {

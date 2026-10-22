@@ -35,9 +35,11 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Security
@@ -60,6 +62,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import com.ultron.chat.Conversation
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -88,6 +91,7 @@ import com.ultron.chat.Msg
 import com.ultron.chat.Prefs
 import com.ultron.chat.R
 import com.ultron.chat.Status
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private const val WORKER_URL = "https://ultron-proxy.yacincianai.workers.dev"
@@ -143,6 +147,7 @@ fun ChatScreen(vm: ChatViewModel) {
 
     var showPerms by remember { mutableStateOf(false) }
     var showLang by remember { mutableStateOf(false) }
+    var showAvatar by remember { mutableStateOf(false) }
 
     val listState = rememberLazyListState()
     val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -191,6 +196,11 @@ fun ChatScreen(vm: ChatViewModel) {
         else -> "idle"
     }
 
+    if (showAvatar) {
+        AvatarScreen(vm) { showAvatar = false }
+        return
+    }
+
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
@@ -204,6 +214,7 @@ fun ChatScreen(vm: ChatViewModel) {
             topBar = {
                 GlassTopBar(statusText, vm.status, micOn || locOn,
                     onMenu = { scope.launch { drawerState.open() } },
+                    onFace = { showAvatar = true },
                     onPerms = { showPerms = true },
                     onLang = { showLang = true })
             },
@@ -255,7 +266,7 @@ fun ChatScreen(vm: ChatViewModel) {
 @Composable
 private fun GlassTopBar(
     status: String, statusEnum: Status, permsActive: Boolean,
-    onMenu: () -> Unit, onPerms: () -> Unit, onLang: () -> Unit,
+    onMenu: () -> Unit, onFace: () -> Unit, onPerms: () -> Unit, onLang: () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -277,6 +288,7 @@ private fun GlassTopBar(
             }
         }
         Spacer(Modifier.weight(1f))
+        GlassIcon(Icons.Filled.Face, UltronRedSoft, onFace)
         GlassIcon(Icons.Filled.Security, if (permsActive) UltronRedSoft else UltronMuted, onPerms)
         GlassIcon(Icons.Filled.Translate, UltronMuted, onLang)
     }
@@ -320,6 +332,108 @@ private fun EmptyState(avatarState: String, micOn: Boolean, locOn: Boolean) {
             Pill(if (micOn) stringResource(R.string.mic_on) else stringResource(R.string.mic_off), micOn)
             Pill(if (locOn) stringResource(R.string.loc_on) else stringResource(R.string.loc_off), locOn)
         }
+    }
+}
+
+/**
+ * Full-screen hands-free "face mode": nothing but the 3D Ultron head and an
+ * exit button. It listens, sends what it hears to the model, speaks the reply
+ * in the monster voice, and the avatar reacts (listening → thinking → speaking)
+ * — then loops. Tap the head to (re)start a turn.
+ */
+@Composable
+fun AvatarScreen(vm: ChatViewModel, onExit: () -> Unit) {
+    val host = LocalHost.current
+    val ctx = LocalContext.current
+    val prefs = remember { Prefs(ctx) }
+    val errText = stringResource(R.string.err_connect)
+
+    var active by remember { mutableStateOf(true) }
+    var micOk by remember { mutableStateOf(host.micGranted()) }
+    var heard by remember { mutableStateOf("") }
+
+    val avatarState = when {
+        AvatarBus.speaking -> "speaking"
+        vm.status == Status.THINKING -> "thinking"
+        vm.status == Status.LISTENING -> "listening"
+        else -> "idle"
+    }
+
+    fun beginTurn() {
+        if (!active || vm.busy || AvatarBus.speaking || !host.micGranted()) return
+        heard = ""
+        vm.updateStatus(Status.LISTENING)
+        host.startListening(
+            prefs.lang,
+            onText = { heard = it },
+            onEnd = {
+                vm.updateStatus(Status.READY)
+                val t = heard.trim()
+                if (t.isNotEmpty()) {
+                    vm.send(WORKER_URL, t, errText) { reply -> if (active) host.speak(reply, prefs.lang) }
+                }
+            },
+        )
+    }
+
+    // Kick off the loop on entry, requesting the mic if it isn't granted yet.
+    LaunchedEffect(Unit) {
+        if (host.micGranted()) { micOk = true; beginTurn() }
+        else host.requestPermissions(true, false) { m, _ -> micOk = m; if (m) beginTurn() }
+    }
+
+    // When a spoken reply finishes, listen again — a continuous conversation.
+    // The READY guard keeps this from racing the initial start or a reply that
+    // is just about to be spoken.
+    LaunchedEffect(AvatarBus.speaking, vm.busy) {
+        if (active && micOk && !AvatarBus.speaking && !vm.busy && vm.status == Status.READY) {
+            delay(600)
+            if (active && !AvatarBus.speaking && !vm.busy && vm.status == Status.READY) beginTurn()
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            active = false
+            host.stopListening()
+            host.stopSpeaking()
+            vm.updateStatus(Status.READY)
+        }
+    }
+
+    val hint = when {
+        !micOk -> stringResource(R.string.avatar_need_mic)
+        AvatarBus.speaking -> "•••"
+        vm.status == Status.THINKING -> stringResource(R.string.status_thinking)
+        vm.status == Status.LISTENING -> stringResource(R.string.status_listening)
+        else -> stringResource(R.string.avatar_idle)
+    }
+
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(BgBrush)
+            .clickable { beginTurn() },
+    ) {
+        AvatarWebView(state = avatarState, modifier = Modifier.fillMaxSize())
+        Box(
+            Modifier
+                .align(Alignment.TopEnd)
+                .padding(16.dp)
+                .size(46.dp)
+                .clip(CircleShape)
+                .background(UltronGlass)
+                .clickable { onExit() },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.avatar_exit), tint = UltronText)
+        }
+        Text(
+            hint,
+            color = UltronMuted,
+            fontSize = 15.sp,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 54.dp),
+        )
     }
 }
 

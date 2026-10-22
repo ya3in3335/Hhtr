@@ -47,4 +47,9 @@
     <string name="copied">Copied ✓</string>
     <string name="empty_chats">No chats yet</string>
     <string name="you">You</string>
+
+    <string name="avatar_mode">Face mode</string>
+    <string name="avatar_exit">Exit</string>
+    <string name="avatar_idle">Tap to talk</string>
+    <string name="avatar_need_mic">Enable the microphone to talk to Ultron.</string>
 </resources>
