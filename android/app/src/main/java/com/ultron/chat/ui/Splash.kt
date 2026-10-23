@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,11 +26,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -37,10 +41,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ultron.chat.R
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun SplashScreen(onDone: () -> Unit) {
     val scale = remember { Animatable(0.5f) }
+    val draw = remember { Animatable(0f) }   // 0→1 = the logo drawing itself
     val intro = rememberInfiniteTransition(label = "intro")
 
     val auraPulse by intro.animateFloat(
@@ -58,9 +64,12 @@ fun SplashScreen(onDone: () -> Unit) {
     )
 
     LaunchedEffect(Unit) {
+        // The logo "draws" itself while it scales in, then holds briefly.
+        val drawJob = launch { draw.animateTo(1f, tween(1600, easing = FastOutSlowInEasing)) }
         scale.animateTo(1.06f, tween(650, easing = FastOutSlowInEasing))
         scale.animateTo(1f, tween(260))
-        delay(1500)
+        drawJob.join()
+        delay(900)
         onDone()
     }
 
@@ -111,12 +120,41 @@ fun SplashScreen(onDone: () -> Unit) {
                             )
                         )
                 )
-                // logo (image unchanged)
-                Image(
-                    painter = painterResource(R.drawable.ultron),
-                    contentDescription = "Ultron",
-                    modifier = Modifier.size(230.dp).scale(scale.value),
-                )
+                // logo that draws itself: a top-down reveal with a glowing "pen" edge
+                Box(
+                    modifier = Modifier
+                        .size(230.dp)
+                        .scale(scale.value)
+                        .drawWithContent {
+                            val p = draw.value.coerceIn(0f, 1f)
+                            val h = size.height * p
+                            clipRect(0f, 0f, size.width, h) { this@drawWithContent.drawContent() }
+                            if (p > 0.01f && p < 0.995f) {
+                                val band = 30f
+                                val top = (h - band).coerceAtLeast(0f)
+                                drawRect(
+                                    brush = Brush.verticalGradient(
+                                        colors = listOf(Color(0x00FF2C47), Color(0x55FF2C47)),
+                                        startY = top, endY = h,
+                                    ),
+                                    topLeft = Offset(0f, top),
+                                    size = Size(size.width, h - top),
+                                )
+                                drawLine(
+                                    brush = Brush.horizontalGradient(
+                                        listOf(Color(0x00FFFFFF), Color(0xFFFFFFFF), Color(0xFFFF2C47), Color(0x00FFFFFF)),
+                                    ),
+                                    start = Offset(0f, h), end = Offset(size.width, h), strokeWidth = 5f,
+                                )
+                            }
+                        },
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.ultron),
+                        contentDescription = "Ultron",
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
             Text(
                 text = "ULTRON",
