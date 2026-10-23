@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.LocationManager
+import android.media.AudioAttributes
+import android.media.MediaPlayer
 import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
@@ -17,17 +19,22 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.core.content.ContextCompat
+import com.ultron.chat.net.EdgeTts
 import com.ultron.chat.ui.App
 import com.ultron.chat.ui.AvatarBus
 import com.ultron.chat.ui.Host
 import com.ultron.chat.ui.LocalHost
+import java.io.File
 import java.util.Locale
+import kotlin.concurrent.thread
 
 class MainActivity : ComponentActivity(), Host {
 
     private val vm: ChatViewModel by viewModels()
     private var recognizer: SpeechRecognizer? = null
     private var tts: TextToSpeech? = null
+    private var player: MediaPlayer? = null
+    @Volatile private var speakSeq = 0   // cancels stale Edge-TTS jobs
 
     /** Drives the 3D avatar's lips: speaking while an utterance plays, idle otherwise. */
     private val avatarSpeechListener = object : UtteranceProgressListener() {
@@ -66,6 +73,8 @@ class MainActivity : ComponentActivity(), Host {
 
     override fun onDestroy() {
         stopListening()
+        try { player?.release() } catch (_: Exception) {}
+        player = null
         tts?.shutdown()
         super.onDestroy()
     }
@@ -136,11 +145,48 @@ class MainActivity : ComponentActivity(), Host {
     override fun speak(text: String, lang: String) {
         val clean = text.replace(Regex("[*`#>_]"), "").trim()
         if (clean.isEmpty()) return
+        stopSpeaking()
+        val seq = ++speakSeq
+        // Try Microsoft Edge neural TTS first (deep monster prosody), directly
+        // from the phone. Fall back to the offline on-device voice on any failure.
+        thread {
+            val mp3 = EdgeTts.synth(clean, lang, pitch = "-30%", rate = "-8%")
+            if (seq != speakSeq) return@thread   // superseded by a newer request
+            runOnUiThread {
+                if (seq != speakSeq) return@runOnUiThread
+                if (mp3 != null && mp3.isNotEmpty()) playMp3(mp3)
+                else speakOffline(clean, lang)
+            }
+        }
+    }
+
+    private fun playMp3(bytes: ByteArray) {
+        try {
+            val f = File(cacheDir, "ultron_tts.mp3")
+            f.writeBytes(bytes)
+            val mp = MediaPlayer()
+            mp.setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .build()
+            )
+            mp.setDataSource(f.absolutePath)
+            mp.setOnPreparedListener { it.start(); AvatarBus.speaking = true }
+            mp.setOnCompletionListener { AvatarBus.speaking = false; it.release(); if (player === it) player = null }
+            mp.setOnErrorListener { p, _, _ -> AvatarBus.speaking = false; p.release(); if (player === p) player = null; true }
+            player = mp
+            mp.prepareAsync()
+        } catch (_: Exception) {
+            AvatarBus.speaking = false
+        }
+    }
+
+    private fun speakOffline(clean: String, lang: String) {
         val locale = Locale(lang)
-        // Deep "monster" voice: low pitch + slightly slower rate.
         fun play(engine: TextToSpeech) {
             engine.language = locale
-            engine.setPitch(0.6f)
+            engine.setPitch(0.6f)              // deep monster pitch
             engine.setSpeechRate(0.92f)
             engine.speak(clean, TextToSpeech.QUEUE_FLUSH, null, "ultron")
         }
@@ -158,7 +204,10 @@ class MainActivity : ComponentActivity(), Host {
     }
 
     override fun stopSpeaking() {
+        speakSeq++   // invalidate any in-flight Edge-TTS job
         try { tts?.stop() } catch (_: Exception) {}
+        try { player?.release() } catch (_: Exception) {}
+        player = null
         AvatarBus.speaking = false
     }
 
