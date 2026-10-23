@@ -8,13 +8,14 @@ workers_dev = true
 # It is EMPTY by default — no internal prompt is shipped.
 [vars]
 SYSTEM_PROMPT = ""
-MODEL = "poolside/laguna-s-2.1:free"
-REASONING = "true"
+MODEL = "qwen/qwen3.8-omni-flash:free"
+API_BASE = "https://api.xkiro.com/v1"
+REASONING = "false"
 
 # Persistent storage for the admin-edited prompt (KV).
 [[kv_namespaces]]
 binding = "PROMPT_KV"
 id = "995f80940c1f4689b8da4b5032641fdc"
 
-# The OpenRouter key is stored as a SECRET (never in this file / repo):
-#   echo "<key>" | npx wrangler secret put OPENROUTER_API_KEY
+# The provider key (XKIRO sk-xt-…) is stored as a SECRET (never in this file / repo):
+#   echo "<key>" | npx wrangler secret put API_KEY

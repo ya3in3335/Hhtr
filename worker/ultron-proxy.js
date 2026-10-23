@@ -1,8 +1,14 @@
 // Ultron proxy — Cloudflare Worker.
-// - Hides the OpenRouter key (OPENROUTER_API_KEY secret).
+// - Hides the model-provider key (API_KEY secret; OPENROUTER_API_KEY also honored).
+// - Talks to any OpenAI-compatible provider (default: XKIRO, api.xkiro.com/v1).
 // - Stores the admin's system prompt in Cloudflare KV (PROMPT_KV), editable live
 //   from the built-in admin page at /admin. No internal prompt ships by default.
 // - Mirrors /api/chat so the apps work by pointing at this Worker's URL.
+
+const DEFAULT_MODEL = "qwen/qwen3.8-omni-flash:free";
+const DEFAULT_API_BASE = "https://api.xkiro.com/v1";
+const apiKeyOf = (env) => env.API_KEY || env.OPENROUTER_API_KEY || "";
+const apiBaseOf = (env) => (env.API_BASE || DEFAULT_API_BASE).replace(/\/+$/, "");
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -148,7 +154,7 @@ export default {
       const adminPw = await getAdminPw(env);
       if (!adminPw || token !== adminPw) return json({ error: "Unauthorized" }, 401);
       if (request.method === "GET") {
-        return json({ prompt: await getPrompt(env), model: env.MODEL || "poolside/laguna-s-2.1:free" });
+        return json({ prompt: await getPrompt(env), model: env.MODEL || DEFAULT_MODEL });
       }
       if (request.method === "POST") {
         if (!env.PROMPT_KV) return json({ error: "KV not bound (PROMPT_KV)" }, 500);
@@ -178,10 +184,11 @@ export default {
     if (url.pathname === "/api/meta") {
       const p = await getPrompt(env);
       return json({
-        model: env.MODEL || "poolside/laguna-s-2.1:free",
-        reasoningEnabled: env.REASONING !== "false",
+        model: env.MODEL || DEFAULT_MODEL,
+        provider: apiBaseOf(env),
+        reasoningEnabled: env.REASONING === "true",
         promptConfigured: Boolean(p && p.trim()),
-        keyConfigured: Boolean(env.OPENROUTER_API_KEY),
+        keyConfigured: Boolean(apiKeyOf(env)),
         kvBound: Boolean(env.PROMPT_KV),
       });
     }
@@ -190,7 +197,8 @@ export default {
     if (url.pathname !== "/api/chat" || request.method !== "POST") {
       return new Response("Ultron proxy is running.", { status: 200, headers: CORS });
     }
-    if (!env.OPENROUTER_API_KEY) return json({ error: "Server missing OPENROUTER_API_KEY secret." }, 500);
+    const KEY = apiKeyOf(env);
+    if (!KEY) return json({ error: "Server missing API_KEY secret." }, 500);
 
     let body; try { body = await request.json(); } catch { return json({ error: "Invalid JSON body." }, 400); }
     const clientMessages = Array.isArray(body?.messages) ? body.messages : [];
@@ -206,19 +214,21 @@ export default {
     }
 
     const wantStream = body?.stream === true;
-    const payload = { model: env.MODEL || "poolside/laguna-s-2.1:free", messages };
-    if (env.REASONING !== "false") payload.reasoning = { enabled: true };
+    const payload = { model: env.MODEL || DEFAULT_MODEL, messages };
+    // Reasoning is opt-in (set REASONING=true); most OpenAI-compatible models
+    // reject the extra param, so it stays off by default.
+    if (env.REASONING === "true") payload.reasoning = { enabled: true };
     if (wantStream) payload.stream = true;
 
     let upstream;
     try {
-      upstream = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      upstream = await fetch(`${apiBaseOf(env)}/chat/completions`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${env.OPENROUTER_API_KEY}`, "Content-Type": "application/json", "X-Title": "Ultron" },
+        headers: { Authorization: `Bearer ${KEY}`, "Content-Type": "application/json", "X-Title": "Ultron" },
         body: JSON.stringify(payload),
       });
     } catch (e) {
-      return json({ error: "Failed to reach OpenRouter", detail: String(e) }, 502);
+      return json({ error: "Failed to reach model provider", detail: String(e) }, 502);
     }
 
     // Live stream: pass the Server-Sent Events straight through.
@@ -236,7 +246,7 @@ export default {
 
     // Non-streaming (or an upstream error).
     const data = await upstream.json().catch(() => ({}));
-    if (!upstream.ok) return json({ error: data?.error || "OpenRouter error", data }, upstream.status);
+    if (!upstream.ok) return json({ error: data?.error || "Provider error", data }, upstream.status);
     const message = data?.choices?.[0]?.message ?? { role: "assistant", content: "" };
     return json({ message, usage: data?.usage ?? null });
   },
