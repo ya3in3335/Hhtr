@@ -27,7 +27,7 @@ Rules:
 - The sandbox is pure JavaScript: Math, JSON, String, Array, Object, Date, RegExp. No network, no files, no Java.
 - The value of the LAST expression is returned to you as `TOOL RESULT:`.
 - Functions and variables you define PERSIST for the rest of the chat, so you can create a tool once (e.g. `function fib(n){...}`) and reuse it in later steps.
-- Use tools to compute, transform data, test algorithms, verify code, or simulate logic — whenever exactness matters more than guessing.
+- Use tools ONLY when exactness helps: non-trivial calculations, data processing, testing algorithms, verifying code or simulating logic. NEVER use a tool for greetings, small talk, or simple questions — just reply normally.
 - After you receive the result, continue. When you are done, reply normally with NO tool block.
 - Escape the code as valid JSON (use \n for newlines, \" for quotes).
 """.trim()
@@ -54,11 +54,17 @@ Rules:
     fun visibleText(text: String): String =
         FENCE.replace(text, "").replace(Regex("\\n{3,}"), "\n\n").trim()
 
-    /** Runs a block in the sandbox and records it as a [ToolStep]. */
+    /** Runs a block in the sandbox and records it as a [ToolStep]. Never throws. */
     fun run(block: Block): ToolStep {
-        val result = when (block.tool) {
-            "run_js" -> JsSandbox.run(block.code)
-            else -> "ERROR: unknown tool '${block.tool}'"
+        val result = try {
+            when (block.tool) {
+                "run_js" -> JsSandbox.run(block.code)
+                else -> "ERROR: unknown tool '${block.tool}'"
+            }
+        } catch (t: Throwable) {
+            // Catches even engine class-load failures (ExceptionInInitializerError, etc.)
+            // so a broken sandbox can never crash the app.
+            "ERROR: tool engine unavailable (${t.javaClass.simpleName})"
         }
         return ToolStep(block.tool, block.code, result)
     }

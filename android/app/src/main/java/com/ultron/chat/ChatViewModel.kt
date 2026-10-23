@@ -85,6 +85,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         status = Status.THINKING
         persist()
         viewModelScope.launch {
+          try {
             val working = c.messages.take(idx).toMutableList()   // up to & including the user turn
             val steps = mutableListOf<ToolStep>()
             var finalMsg: Msg? = null
@@ -146,6 +147,13 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 onReply(fm.content)
             }
             persist()
+          } catch (t: Throwable) {
+            // Last-resort guard: nothing in a turn may crash the app.
+            busy = false
+            status = Status.READY
+            if (idx < c.messages.size) c.messages[idx] = Msg("assistant", errText)
+            runCatching { persist() }
+          }
         }
     }
 }
