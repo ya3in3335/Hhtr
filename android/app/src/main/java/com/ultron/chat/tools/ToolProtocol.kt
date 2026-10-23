@@ -34,25 +34,36 @@ Rules:
 
     data class Block(val tool: String, val code: String)
 
-    private val FENCE = Regex("```ultron-tool\\s*(\\{[\\s\\S]*?})\\s*```", RegexOption.IGNORE_CASE)
+    // NOTE: the closing brace is escaped (\\}) — Android's regex engine rejects a
+    // bare '}', which previously threw at class-init and broke sending entirely.
+    private val fence: Regex? by lazy {
+        runCatching { Regex("```ultron-tool\\s*(\\{[\\s\\S]*?\\})\\s*```", RegexOption.IGNORE_CASE) }.getOrNull()
+    }
 
-    /** Extracts every tool block from a completed assistant reply. */
+    /** Extracts every tool block from a completed assistant reply. Never throws. */
     fun parse(text: String): List<Block> {
+        val re = fence ?: return emptyList()
         val out = mutableListOf<Block>()
-        for (m in FENCE.findAll(text)) {
-            try {
-                val o = JSONObject(m.groupValues[1])
-                val tool = o.optString("tool", "run_js")
-                val code = o.optString("code", "")
-                if (code.isNotBlank()) out.add(Block(tool, code))
-            } catch (_: Exception) { /* malformed block — ignore */ }
-        }
+        try {
+            for (m in re.findAll(text)) {
+                try {
+                    val o = JSONObject(m.groupValues[1])
+                    val tool = o.optString("tool", "run_js")
+                    val code = o.optString("code", "")
+                    if (code.isNotBlank()) out.add(Block(tool, code))
+                } catch (_: Exception) { /* malformed block — ignore */ }
+            }
+        } catch (_: Throwable) { /* defensive */ }
         return out
     }
 
-    /** The user-facing text of a reply with any tool blocks removed. */
-    fun visibleText(text: String): String =
-        FENCE.replace(text, "").replace(Regex("\\n{3,}"), "\n\n").trim()
+    /** The user-facing text of a reply with any tool blocks removed. Never throws. */
+    fun visibleText(text: String): String {
+        val re = fence ?: return text
+        return try {
+            re.replace(text, "").replace(Regex("\\n{3,}"), "\n\n").trim()
+        } catch (_: Throwable) { text }
+    }
 
     /** Runs a block in the sandbox and records it as a [ToolStep]. Never throws. */
     fun run(block: Block): ToolStep {
