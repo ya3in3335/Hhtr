@@ -58,5 +58,8 @@ dependencies {
 
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
+    // Sandboxed JavaScript engine for the agent's self-built tools (pure JS, no Java access).
+    implementation("org.mozilla:rhino:1.7.14")
+
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

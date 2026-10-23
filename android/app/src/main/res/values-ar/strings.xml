@@ -3,11 +3,16 @@
     <string name="app_name">Ultron</string>
     <string name="status_ready">جاهز</string>
     <string name="status_thinking">يفكّر…</string>
+    <string name="tools_used">أدوات مُستخدمة: %1$d</string>
+    <string name="status_tool">يبني أداة…</string>
     <string name="status_listening">يستمع…</string>
 
     <string name="empty_title">مرحبًا 👋</string>
     <string name="empty_desc">اكتب رسالتك أو اضغط المايك للتحدث. فعّل أذونات الجهاز من الدرع بالأعلى لتمنح المساعد قدرات الهاتف.</string>
 
+    <string name="suggest_code">اكتب سكربت</string>
+    <string name="suggest_explain">اشرح هذا الكود</string>
+    <string name="suggest_tool">ابنِ أداة</string>
     <string name="compose_hint">اكتب رسالة…</string>
     <string name="think_show">عرض التفكير</string>
 

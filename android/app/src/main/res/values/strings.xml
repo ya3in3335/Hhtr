@@ -3,11 +3,16 @@
     <string name="app_name">Ultron</string>
     <string name="status_ready">Ready</string>
     <string name="status_thinking">Thinking…</string>
+    <string name="tools_used">Tools used: %1$d</string>
+    <string name="status_tool">Building a tool…</string>
     <string name="status_listening">Listening…</string>
 
     <string name="empty_title">Welcome 👋</string>
     <string name="empty_desc">Type a message or tap the mic to talk. Enable device permissions from the shield above to give the assistant phone capabilities.</string>
 
+    <string name="suggest_code">Write a script</string>
+    <string name="suggest_explain">Explain this code</string>
+    <string name="suggest_tool">Build a tool</string>
     <string name="compose_hint">Message…</string>
     <string name="think_show">Show thinking</string>
 

@@ -79,6 +79,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
@@ -205,13 +206,14 @@ fun ChatScreen(vm: ChatViewModel) {
     val statusText = when (vm.status) {
         Status.READY -> stringResource(R.string.status_ready)
         Status.THINKING -> stringResource(R.string.status_thinking)
+        Status.TOOL -> stringResource(R.string.status_tool)
         Status.LISTENING -> stringResource(R.string.status_listening)
     }
 
-    // Drives the 3D head: speaking overrides everything, else follow chat status.
-    val avatarState = when {
+    // Drives the voice orb: speaking overrides everything, else follow chat status.
+    val orbState = when {
         AvatarBus.speaking -> "speaking"
-        vm.status == Status.THINKING -> "thinking"
+        vm.status == Status.THINKING || vm.status == Status.TOOL -> "thinking"
         vm.status == Status.LISTENING -> "listening"
         else -> "idle"
     }
@@ -251,31 +253,15 @@ fun ChatScreen(vm: ChatViewModel) {
         ) { pad ->
             Box(Modifier.padding(pad).fillMaxSize()) {
                 if (vm.messages.isEmpty()) {
-                    EmptyState(avatarState, micOn, locOn)
+                    EmptyState(orbState, micOn, locOn, onSuggest = { doSend(it) })
                 } else {
-                    Column(Modifier.fillMaxSize()) {
-                        // Compact talking head stays mounted above the conversation,
-                        // framed in a frosted-glass card.
-                        Box(
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 10.dp)
-                                .height(150.dp)
-                                .glass(RoundedCornerShape(22.dp)),
-                        ) {
-                            AvatarWebView(
-                                state = avatarState,
-                                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(22.dp)),
-                            )
-                        }
-                        LazyColumn(
-                            state = listState,
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(18.dp),
-                        ) {
-                            items(vm.messages.size) { i -> MessageItem(vm.messages[i]) }
-                        }
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(18.dp),
+                    ) {
+                        items(vm.messages.size) { i -> MessageItem(vm.messages[i]) }
                     }
                 }
             }
@@ -361,22 +347,45 @@ private fun GlassIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, tin
 }
 
 @Composable
-private fun EmptyState(avatarState: String, micOn: Boolean, locOn: Boolean) {
+private fun EmptyState(orbState: String, micOn: Boolean, locOn: Boolean, onSuggest: (String) -> Unit) {
     Column(
-        modifier = Modifier.fillMaxSize().padding(34.dp),
+        modifier = Modifier.fillMaxSize().padding(30.dp),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
     ) {
-        AvatarWebView(state = avatarState, modifier = Modifier.size(248.dp))
-        Spacer(Modifier.size(18.dp))
-        Text(stringResource(R.string.empty_title), color = UltronText, fontWeight = FontWeight.Bold, fontSize = 26.sp)
+        VoiceOrb(orbState, size = 172.dp)
+        Spacer(Modifier.size(22.dp))
+        Text(stringResource(R.string.empty_title), color = UltronText, fontWeight = FontWeight.Bold, fontSize = 27.sp)
         Spacer(Modifier.size(10.dp))
-        Text(stringResource(R.string.empty_desc), color = UltronMuted, fontSize = 14.sp, lineHeight = 21.sp)
-        Spacer(Modifier.size(16.dp))
+        Text(
+            stringResource(R.string.empty_desc), color = UltronMuted, fontSize = 14.sp, lineHeight = 21.sp,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.size(20.dp))
+        val s1 = stringResource(R.string.suggest_code)
+        val s2 = stringResource(R.string.suggest_explain)
+        val s3 = stringResource(R.string.suggest_tool)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SuggestChip(s1) { onSuggest(s1) }
+            SuggestChip(s3) { onSuggest(s3) }
+        }
+        Spacer(Modifier.size(8.dp))
+        SuggestChip(s2) { onSuggest(s2) }
+        Spacer(Modifier.size(18.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Pill(if (micOn) stringResource(R.string.mic_on) else stringResource(R.string.mic_off), micOn)
             Pill(if (locOn) stringResource(R.string.loc_on) else stringResource(R.string.loc_off), locOn)
         }
     }
+}
+
+@Composable
+private fun SuggestChip(text: String, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .glass(RoundedCornerShape(999.dp))
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+    ) { Text(text, color = UltronText, fontSize = 13.sp) }
 }
 
 /**
@@ -398,7 +407,7 @@ fun AvatarScreen(vm: ChatViewModel, onExit: () -> Unit) {
 
     val avatarState = when {
         AvatarBus.speaking -> "speaking"
-        vm.status == Status.THINKING -> "thinking"
+        vm.status == Status.THINKING || vm.status == Status.TOOL -> "thinking"
         vm.status == Status.LISTENING -> "listening"
         else -> "idle"
     }
@@ -459,7 +468,7 @@ fun AvatarScreen(vm: ChatViewModel, onExit: () -> Unit) {
             .background(BgBrush)
             .clickable { beginTurn() },
     ) {
-        AvatarWebView(state = avatarState, modifier = Modifier.fillMaxSize())
+        VoiceOrb(state = avatarState, size = 300.dp, modifier = Modifier.align(Alignment.Center))
         Box(
             Modifier
                 .align(Alignment.TopEnd)
@@ -514,8 +523,9 @@ private fun MessageItem(msg: Msg) {
             ) { Image(painterResource(R.drawable.ultron), contentDescription = null, modifier = Modifier.size(22.dp)) }
             Spacer(Modifier.size(12.dp))
             Column(Modifier.weight(1f).padding(top = 3.dp)) {
-                if (msg.content.isBlank()) TypingDots()
-                else SelectionContainer { MarkdownText(msg.content, UltronText) }
+                if (!msg.tools.isNullOrEmpty()) ToolsBlock(msg.tools)
+                if (msg.content.isBlank() && msg.tools.isNullOrEmpty()) TypingDots()
+                else if (msg.content.isNotBlank()) SelectionContainer { MarkdownText(msg.content, UltronText) }
                 if (!msg.reasoning.isNullOrBlank()) ReasoningBlock(msg.reasoning)
                 if (msg.content.isNotBlank()) CopyRow(msg.content)
             }
@@ -542,6 +552,42 @@ private fun ReasoningBlock(text: String) {
         }
         AnimatedVisibility(open) {
             Text(text, color = UltronMuted, fontSize = 13.sp, lineHeight = 20.sp, modifier = Modifier.padding(13.dp))
+        }
+    }
+}
+
+@Composable
+private fun ToolsBlock(tools: List<com.ultron.chat.ToolStep>) {
+    var open by remember { mutableStateOf(false) }
+    val rot by animateFloatAsState(if (open) 180f else 0f, label = "trot")
+    Column(
+        Modifier
+            .padding(bottom = 8.dp)
+            .glass(RoundedCornerShape(14.dp), alpha = 0.42f),
+    ) {
+        Row(
+            Modifier.fillMaxWidth().clickable { open = !open }.padding(horizontal = 13.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("🔧 " + stringResource(R.string.tools_used, tools.size), color = UltronRedSoft, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+            Spacer(Modifier.weight(1f))
+            Icon(Icons.Filled.ExpandMore, contentDescription = null, tint = UltronMuted, modifier = Modifier.size(18.dp).graphicsLayer { rotationZ = rot })
+        }
+        AnimatedVisibility(open) {
+            Column(Modifier.padding(horizontal = 13.dp).padding(bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                tools.forEachIndexed { i, t ->
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("#${i + 1} · ${t.tool}", color = UltronMuted, fontSize = 11.sp, letterSpacing = 1.sp)
+                        Text(
+                            t.code, color = UltronText, fontSize = 12.sp, lineHeight = 17.sp,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Color(0x14000000)).padding(10.dp),
+                        )
+                        Text("→ ${t.result}", color = Color(0xFF8CF0A6), fontSize = 12.sp, lineHeight = 17.sp,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+                    }
+                }
+            }
         }
     }
 }

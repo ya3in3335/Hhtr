@@ -38,16 +38,22 @@ object LocaleHelper {
     }
 }
 
-enum class Status { READY, THINKING, LISTENING }
+enum class Status { READY, THINKING, LISTENING, TOOL }
+
+/** One tool the model built and ran during a turn (code + sandbox output). */
+data class ToolStep(val tool: String, val code: String, val result: String)
 
 /**
  * One chat turn.
  * [reasoning] is the human-readable thinking text shown in the UI.
  * [reasoningRaw] is the untouched reasoning_details JSON, resent verbatim to the model.
+ * [tools] are the sandboxed tools the assistant created and executed this turn
+ * (shown in the UI; not persisted or resent).
  */
 data class Msg(
     val role: String,
     val content: String,
     val reasoning: String? = null,
     val reasoningRaw: String? = null,
+    val tools: List<ToolStep>? = null,
 )

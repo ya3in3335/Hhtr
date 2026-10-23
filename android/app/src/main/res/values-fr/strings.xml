@@ -3,11 +3,16 @@
     <string name="app_name">Ultron</string>
     <string name="status_ready">Prêt</string>
     <string name="status_thinking">Réflexion…</string>
+    <string name="tools_used">Outils utilisés : %1$d</string>
+    <string name="status_tool">Création d'un outil…</string>
     <string name="status_listening">Écoute…</string>
 
     <string name="empty_title">Bienvenue 👋</string>
     <string name="empty_desc">Écrivez un message ou appuyez sur le micro pour parler. Activez les autorisations de l\'appareil via le bouclier en haut.</string>
 
+    <string name="suggest_code">Écrire un script</string>
+    <string name="suggest_explain">Expliquer ce code</string>
+    <string name="suggest_tool">Créer un outil</string>
     <string name="compose_hint">Message…</string>
     <string name="think_show">Afficher le raisonnement</string>
 

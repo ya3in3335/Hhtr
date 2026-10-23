@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.ultron.chat.net.ChatApi
+import com.ultron.chat.tools.ToolProtocol
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -66,6 +67,12 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     /** "New chat" button. */
     fun clear() = newChat()
 
+    /**
+     * Sends a turn and runs the tool-use agent loop: it streams a reply, and if
+     * the model emitted a tool block it runs the tool in the sandbox, feeds the
+     * result back, and streams again — until the model answers with no tool
+     * block (or [ToolProtocol.MAX_STEPS] is reached).
+     */
     fun send(apiBase: String, text: String, errText: String, onReply: (String) -> Unit) {
         val t = text.trim()
         if (t.isEmpty() || busy) return
@@ -78,22 +85,66 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         status = Status.THINKING
         persist()
         viewModelScope.launch {
-            val history = c.messages.take(idx)    // everything up to and including the user turn
-            val sb = StringBuilder()
-            val rb = StringBuilder()
-            val res = withContext(Dispatchers.IO) {
-                ChatApi.sendStream(apiBase, history) { dc, dr ->
-                    if (dc != null) sb.append(dc)
-                    if (dr != null) rb.append(dr)
-                    if (idx < c.messages.size) {
-                        c.messages[idx] = Msg("assistant", sb.toString(), rb.toString().ifBlank { null })
+            val working = c.messages.take(idx).toMutableList()   // up to & including the user turn
+            val steps = mutableListOf<ToolStep>()
+            var finalMsg: Msg? = null
+            var failed = false
+
+            loop@ for (step in 0 until ToolProtocol.MAX_STEPS) {
+                status = if (step == 0) Status.THINKING else Status.TOOL
+                val sb = StringBuilder()
+                val rb = StringBuilder()
+                val res = withContext(Dispatchers.IO) {
+                    ChatApi.sendStream(apiBase, working) { dc, dr ->
+                        if (dc != null) sb.append(dc)
+                        if (dr != null) rb.append(dr)
+                        if (idx < c.messages.size) {
+                            c.messages[idx] = Msg(
+                                "assistant",
+                                ToolProtocol.visibleText(sb.toString()),
+                                rb.toString().ifBlank { null },
+                                tools = steps.toList().ifEmpty { null },
+                            )
+                        }
                     }
                 }
+                if (res.isFailure) { failed = true; break@loop }
+                val m = res.getOrNull()!!
+                val full = m.content
+                val blocks = ToolProtocol.parse(full)
+
+                if (blocks.isEmpty()) {
+                    finalMsg = Msg("assistant", ToolProtocol.visibleText(full), m.reasoning, m.reasoningRaw, steps.toList().ifEmpty { null })
+                    break@loop
+                }
+
+                // The model built one or more tools — run them in the sandbox.
+                val results = StringBuilder()
+                withContext(Dispatchers.Default) {
+                    blocks.forEachIndexed { i, b ->
+                        val st = ToolProtocol.run(b)
+                        steps.add(st)
+                        results.append("[").append(i + 1).append("] ").append(st.result).append("\n")
+                    }
+                }
+                if (idx < c.messages.size) {
+                    c.messages[idx] = Msg("assistant", ToolProtocol.visibleText(full), m.reasoning, m.reasoningRaw, steps.toList())
+                }
+                working.add(Msg("assistant", full))
+                working.add(Msg("user", "TOOL RESULT:\n" + results.toString().trim()))
+                // Fallback if we hit the step ceiling without a clean final answer.
+                finalMsg = Msg("assistant", ToolProtocol.visibleText(full), m.reasoning, m.reasoningRaw, steps.toList())
             }
+
             busy = false
             status = Status.READY
-            res.onSuccess { m -> if (idx < c.messages.size) c.messages[idx] = m; onReply(m.content) }
-                .onFailure { if (idx < c.messages.size) c.messages[idx] = Msg("assistant", errText) }
+            if (failed) {
+                if (idx < c.messages.size) c.messages[idx] = Msg("assistant", errText)
+            } else {
+                val fm = finalMsg ?: Msg("assistant", "")
+                if (idx < c.messages.size) c.messages[idx] = fm
+                onReply(fm.content)
+            }
             persist()
         }
     }

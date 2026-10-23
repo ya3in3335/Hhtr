@@ -1,6 +1,7 @@
 package com.ultron.chat.net
 
 import com.ultron.chat.Msg
+import com.ultron.chat.tools.ToolProtocol
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -25,6 +26,7 @@ object ChatApi {
 
     private fun buildMessages(history: List<Msg>): JSONArray {
         val arr = JSONArray()
+        arr.put(JSONObject().put("role", "system").put("content", ToolProtocol.SYSTEM_INSTRUCTIONS))
         for (m in history) {
             val o = JSONObject().put("role", m.role).put("content", m.content)
             if (m.role == "assistant" && !m.reasoningRaw.isNullOrBlank()) {
@@ -78,6 +80,7 @@ object ChatApi {
     fun send(apiBase: String, history: List<Msg>): Result<Msg> {
         return try {
             val arr = JSONArray()
+            arr.put(JSONObject().put("role", "system").put("content", ToolProtocol.SYSTEM_INSTRUCTIONS))
             for (m in history) {
                 val o = JSONObject()
                     .put("role", m.role)
