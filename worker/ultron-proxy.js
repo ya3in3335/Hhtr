@@ -215,6 +215,10 @@ export default {
 
     const wantStream = body?.stream === true;
     const payload = { model: env.MODEL || DEFAULT_MODEL, messages };
+    // Longer replies, but kept moderate so a single turn doesn't blow the
+    // provider's tokens-per-minute budget. Tune via the MAX_TOKENS var.
+    const maxTok = parseInt(env.MAX_TOKENS || "2048", 10);
+    if (maxTok > 0) payload.max_tokens = maxTok;
     // Reasoning is opt-in (set REASONING=true); most OpenAI-compatible models
     // reject the extra param, so it stays off by default.
     if (env.REASONING === "true") payload.reasoning = { enabled: true };

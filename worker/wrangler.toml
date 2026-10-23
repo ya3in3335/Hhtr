@@ -11,6 +11,9 @@ SYSTEM_PROMPT = ""
 MODEL = "qwen/qwen3.8-omni-flash:free"
 API_BASE = "https://api.xkiro.com/v1"
 REASONING = "false"
+# Max reply length per turn. Moderate so one turn stays within the free
+# tokens-per-minute budget; raise it if your plan allows.
+MAX_TOKENS = "2048"
 
 # Persistent storage for the admin-edited prompt (KV).
 [[kv_namespaces]]
