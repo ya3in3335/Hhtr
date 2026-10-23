@@ -52,7 +52,10 @@ object ChatApi {
                 .post(payload.toRequestBody(JSON))
                 .build()
             streamClient.newCall(req).execute().use { resp ->
-                if (!resp.isSuccessful) return Result.failure(RuntimeException("HTTP ${resp.code}"))
+                if (!resp.isSuccessful) {
+                    val body = resp.body?.string()?.take(300).orEmpty()
+                    return Result.failure(RuntimeException("HTTP ${resp.code} ${body}".trim()))
+                }
                 val source = resp.body?.source() ?: return Result.failure(RuntimeException("empty body"))
                 val content = StringBuilder()
                 val reasoning = StringBuilder()

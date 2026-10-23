@@ -90,6 +90,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             val steps = mutableListOf<ToolStep>()
             var finalMsg: Msg? = null
             var failed = false
+            var failReason: String? = null
 
             loop@ for (step in 0 until ToolProtocol.MAX_STEPS) {
                 status = if (step == 0) Status.THINKING else Status.TOOL
@@ -109,7 +110,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                         }
                     }
                 }
-                if (res.isFailure) { failed = true; break@loop }
+                if (res.isFailure) { failed = true; failReason = res.exceptionOrNull()?.message; break@loop }
                 val m = res.getOrNull()!!
                 val full = m.content
                 val blocks = ToolProtocol.parse(full)
@@ -140,7 +141,8 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             busy = false
             status = Status.READY
             if (failed) {
-                if (idx < c.messages.size) c.messages[idx] = Msg("assistant", errText)
+                val detail = failReason?.let { "\n\n⚠ $it" } ?: ""
+                if (idx < c.messages.size) c.messages[idx] = Msg("assistant", errText + detail)
             } else {
                 val fm = finalMsg ?: Msg("assistant", "")
                 if (idx < c.messages.size) c.messages[idx] = fm
@@ -151,7 +153,8 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             // Last-resort guard: nothing in a turn may crash the app.
             busy = false
             status = Status.READY
-            if (idx < c.messages.size) c.messages[idx] = Msg("assistant", errText)
+            val detail = t.message?.let { "\n\n⚠ $it" } ?: "\n\n⚠ ${t.javaClass.simpleName}"
+            if (idx < c.messages.size) c.messages[idx] = Msg("assistant", errText + detail)
             runCatching { persist() }
           }
         }
