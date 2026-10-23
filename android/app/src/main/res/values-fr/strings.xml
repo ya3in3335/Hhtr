@@ -4,7 +4,7 @@
     <string name="status_ready">Prêt</string>
     <string name="status_thinking">Réflexion…</string>
     <string name="tools_used">Outils utilisés : %1$d</string>
-    <string name="status_tool">Création d'un outil…</string>
+    <string name="status_tool">Création d\'un outil…</string>
     <string name="status_listening">Écoute…</string>
 
     <string name="empty_title">Bienvenue 👋</string>
