@@ -8,7 +8,7 @@ workers_dev = true
 # It is EMPTY by default — no internal prompt is shipped.
 [vars]
 SYSTEM_PROMPT = ""
-MODEL = "google/gemma-4-31b-it:free"
+MODEL = "poolside/laguna-s-2.1:free"
 API_BASE = "https://openrouter.ai/api/v1"
 REASONING = "false"
 # Max reply length per turn. Moderate so one turn stays within the free

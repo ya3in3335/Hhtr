@@ -5,7 +5,7 @@
 //   from the built-in admin page at /admin. No internal prompt ships by default.
 // - Mirrors /api/chat so the apps work by pointing at this Worker's URL.
 
-const DEFAULT_MODEL = "google/gemma-4-31b-it:free";
+const DEFAULT_MODEL = "poolside/laguna-s-2.1:free";
 const DEFAULT_API_BASE = "https://openrouter.ai/api/v1";
 const apiKeyOf = (env) => env.API_KEY || env.OPENROUTER_API_KEY || "";
 const apiBaseOf = (env) => (env.API_BASE || DEFAULT_API_BASE).replace(/\/+$/, "");
@@ -221,7 +221,7 @@ export default {
     // OpenRouter allows at most 3 models in the fallback array.
     const models = (fallbacks.length ? fallbacks : [
       primary,
-      "google/gemma-4-26b-a4b-it:free",
+      "cohere/north-mini-code:free",
       "nvidia/nemotron-3-ultra-550b-a55b:free",
     ]).slice(0, 3);
     const payload = { model: primary, models, messages };
