@@ -36,6 +36,11 @@ Available tools:
 - memory_set: { "tool": "memory_set", "key": "...", "value": "..." } — remember something permanently.
 - memory_get: { "tool": "memory_get", "key": "..." } — recall it later.
 - memory_list: { "tool": "memory_list" } — list everything you remember.
+- github_whoami: { "tool": "github_whoami" } — the linked GitHub account.
+- github_list_repos: { "tool": "github_list_repos" } — the user's repositories.
+- github_get_file: { "tool": "github_get_file", "repo": "owner/name", "path": "dir/file.ext" } — read a file.
+- github_put_file: { "tool": "github_put_file", "repo": "owner/name", "path": "dir/file.ext", "content": "...", "message": "commit msg" } — create/update a file (commits it).
+- github_create_gist: { "tool": "github_create_gist", "filename": "...", "content": "...", "description": "...", "public": true } — publish a gist.
 
 Rules:
 - Plan, then act. Chain tools across steps to reach the goal (e.g. web_search → http_get → run_js).
@@ -83,6 +88,8 @@ Rules:
         "memory_set" -> "memory_set " + b.args.optString("key") + " = " + b.args.optString("value")
         "memory_get" -> "memory_get " + b.args.optString("key")
         "clipboard_set" -> "clipboard_set …"
+        "github_get_file", "github_put_file" -> b.tool + " " + b.args.optString("repo") + ":" + b.args.optString("path")
+        "github_create_gist" -> "github_create_gist " + b.args.optString("filename")
         else -> b.tool
     }
 
@@ -101,6 +108,11 @@ Rules:
                 "memory_set" -> AgentTools.memSet(ctx, a.optString("key"), a.optString("value"))
                 "memory_get" -> AgentTools.memGet(ctx, a.optString("key"))
                 "memory_list" -> AgentTools.memList(ctx)
+                "github_whoami" -> AgentTools.ghWhoami(ctx)
+                "github_list_repos" -> AgentTools.ghListRepos(ctx)
+                "github_get_file" -> AgentTools.ghGetFile(ctx, a.optString("repo"), a.optString("path"))
+                "github_put_file" -> AgentTools.ghPutFile(ctx, a.optString("repo"), a.optString("path"), a.optString("content"), a.optString("message"))
+                "github_create_gist" -> AgentTools.ghCreateGist(ctx, a.optString("filename"), a.optString("content"), a.optString("description"), a.optBoolean("public", false))
                 else -> "ERROR: unknown tool '${block.tool}'"
             }
         } catch (t: Throwable) {

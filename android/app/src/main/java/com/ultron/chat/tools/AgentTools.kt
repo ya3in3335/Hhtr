@@ -9,8 +9,10 @@ import android.content.pm.PackageManager
 import android.location.LocationManager
 import android.net.Uri
 import androidx.core.content.ContextCompat
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -157,5 +159,104 @@ object AgentTools {
         } catch (e: Exception) {
             "ERROR: ${e.message}"
         }
+    }
+
+    // ---- GitHub (uses the token saved in "Link GitHub") ----
+    private fun ghToken(ctx: Context): String =
+        ctx.getSharedPreferences("ultron", Context.MODE_PRIVATE).getString("gh", "").orEmpty().trim()
+
+    private fun ghReq(token: String, url: String): Request.Builder =
+        Request.Builder().url(url)
+            .header("Authorization", "Bearer $token")
+            .header("Accept", "application/vnd.github+json")
+            .header("X-GitHub-Api-Version", "2022-11-28")
+            .header("User-Agent", "Ultron")
+
+    fun ghWhoami(ctx: Context): String {
+        val token = ghToken(ctx)
+        if (token.isBlank()) return "ERROR: link GitHub first (menu → Link GitHub)"
+        return try {
+            http.newCall(ghReq(token, "https://api.github.com/user").build()).execute().use { r ->
+                val o = JSONObject(r.body?.string().orEmpty())
+                if (!r.isSuccessful) "ERROR: HTTP ${r.code} ${o.optString("message")}"
+                else "login=${o.optString("login")}, name=${o.optString("name")}, repos=${o.optInt("public_repos")}"
+            }
+        } catch (e: Exception) { "ERROR: ${e.message}" }
+    }
+
+    fun ghListRepos(ctx: Context): String {
+        val token = ghToken(ctx)
+        if (token.isBlank()) return "ERROR: link GitHub first"
+        return try {
+            http.newCall(ghReq(token, "https://api.github.com/user/repos?per_page=40&sort=updated").build()).execute().use { r ->
+                val body = r.body?.string().orEmpty()
+                if (!r.isSuccessful) return "ERROR: HTTP ${r.code}"
+                val arr = org.json.JSONArray(body)
+                val sb = StringBuilder()
+                for (i in 0 until arr.length()) {
+                    val o = arr.optJSONObject(i) ?: continue
+                    sb.append(o.optString("full_name")).append(if (o.optBoolean("private")) " (private)" else "").append("\n")
+                }
+                cap(sb.toString().trim().ifBlank { "(no repos)" })
+            }
+        } catch (e: Exception) { "ERROR: ${e.message}" }
+    }
+
+    fun ghGetFile(ctx: Context, repo: String, path: String): String {
+        val token = ghToken(ctx)
+        if (token.isBlank()) return "ERROR: link GitHub first"
+        if (repo.isBlank() || path.isBlank()) return "ERROR: need repo (owner/name) and path"
+        return try {
+            http.newCall(ghReq(token, "https://api.github.com/repos/$repo/contents/$path").build()).execute().use { r ->
+                val o = JSONObject(r.body?.string().orEmpty())
+                if (!r.isSuccessful) return "ERROR: HTTP ${r.code} ${o.optString("message")}"
+                val content = o.optString("content").replace("\n", "")
+                val decoded = String(android.util.Base64.decode(content, android.util.Base64.DEFAULT))
+                cap(decoded)
+            }
+        } catch (e: Exception) { "ERROR: ${e.message}" }
+    }
+
+    fun ghPutFile(ctx: Context, repo: String, path: String, content: String, message: String): String {
+        val token = ghToken(ctx)
+        if (token.isBlank()) return "ERROR: link GitHub first"
+        if (repo.isBlank() || path.isBlank()) return "ERROR: need repo (owner/name) and path"
+        return try {
+            // Look up existing sha (required to update an existing file).
+            var sha: String? = null
+            http.newCall(ghReq(token, "https://api.github.com/repos/$repo/contents/$path").build()).execute().use { r ->
+                if (r.isSuccessful) sha = JSONObject(r.body?.string().orEmpty()).optString("sha").ifBlank { null }
+            }
+            val b64 = android.util.Base64.encodeToString(content.toByteArray(), android.util.Base64.NO_WRAP)
+            val payload = JSONObject()
+                .put("message", message.ifBlank { "Update $path via Ultron" })
+                .put("content", b64)
+            if (sha != null) payload.put("sha", sha)
+            val req = ghReq(token, "https://api.github.com/repos/$repo/contents/$path")
+                .put(payload.toString().toRequestBody("application/json".toMediaType()))
+                .build()
+            http.newCall(req).execute().use { r ->
+                val o = JSONObject(r.body?.string().orEmpty())
+                if (!r.isSuccessful) "ERROR: HTTP ${r.code} ${o.optString("message")}"
+                else "committed: " + o.optJSONObject("content")?.optString("html_url").orEmpty()
+            }
+        } catch (e: Exception) { "ERROR: ${e.message}" }
+    }
+
+    fun ghCreateGist(ctx: Context, filename: String, content: String, description: String, public: Boolean): String {
+        val token = ghToken(ctx)
+        if (token.isBlank()) return "ERROR: link GitHub first"
+        return try {
+            val files = JSONObject().put(filename.ifBlank { "ultron.txt" }, JSONObject().put("content", content))
+            val payload = JSONObject().put("description", description).put("public", public).put("files", files)
+            val req = ghReq(token, "https://api.github.com/gists")
+                .post(payload.toString().toRequestBody("application/json".toMediaType()))
+                .build()
+            http.newCall(req).execute().use { r ->
+                val o = JSONObject(r.body?.string().orEmpty())
+                if (!r.isSuccessful) "ERROR: HTTP ${r.code} ${o.optString("message")}"
+                else "gist: " + o.optString("html_url")
+            }
+        } catch (e: Exception) { "ERROR: ${e.message}" }
     }
 }
