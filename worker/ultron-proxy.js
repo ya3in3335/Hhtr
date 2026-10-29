@@ -5,8 +5,8 @@
 //   from the built-in admin page at /admin. No internal prompt ships by default.
 // - Mirrors /api/chat so the apps work by pointing at this Worker's URL.
 
-const DEFAULT_MODEL = "qwen/qwen3.8-omni-flash:free";
-const DEFAULT_API_BASE = "https://api.xkiro.com/v1";
+const DEFAULT_MODEL = "google/gemma-4-31b-it:free";
+const DEFAULT_API_BASE = "https://openrouter.ai/api/v1";
 const apiKeyOf = (env) => env.API_KEY || env.OPENROUTER_API_KEY || "";
 const apiBaseOf = (env) => (env.API_BASE || DEFAULT_API_BASE).replace(/\/+$/, "");
 
@@ -224,13 +224,27 @@ export default {
     if (env.REASONING === "true") payload.reasoning = { enabled: true };
     if (wantStream) payload.stream = true;
 
+    const reqBody = JSON.stringify(payload);
+    const doFetch = () => fetch(`${apiBaseOf(env)}/chat/completions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${KEY}`,
+        "Content-Type": "application/json",
+        "X-Title": "Ultron",
+        "HTTP-Referer": "https://ultron-proxy.yacincianai.workers.dev",
+      },
+      body: reqBody,
+    });
     let upstream;
     try {
-      upstream = await fetch(`${apiBaseOf(env)}/chat/completions`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${KEY}`, "Content-Type": "application/json", "X-Title": "Ultron" },
-        body: JSON.stringify(payload),
-      });
+      upstream = await doFetch();
+      // Free shared pools often return 429; retry a few times before giving up.
+      let tries = 0;
+      while (upstream.status === 429 && tries < 3) {
+        await new Promise((r) => setTimeout(r, 900));
+        upstream = await doFetch();
+        tries++;
+      }
     } catch (e) {
       return json({ error: "Failed to reach model provider", detail: String(e) }, 502);
     }
