@@ -171,9 +171,10 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
                 // The model built one or more tools — run them in the sandbox.
                 val results = StringBuilder()
-                withContext(Dispatchers.Default) {
+                val appCtx = getApplication<Application>()
+                withContext(Dispatchers.IO) {
                     blocks.forEachIndexed { i, b ->
-                        val st = ToolProtocol.run(b)
+                        val st = ToolProtocol.run(b, appCtx)
                         steps.add(st)
                         results.append("[").append(i + 1).append("] ").append(st.result).append("\n")
                     }
