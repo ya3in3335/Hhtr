@@ -214,7 +214,17 @@ export default {
     }
 
     const wantStream = body?.stream === true;
-    const payload = { model: env.MODEL || DEFAULT_MODEL, messages };
+    const primary = env.MODEL || DEFAULT_MODEL;
+    // Fallback chain: if the primary free model is rate-limited, OpenRouter
+    // routes to the next available one. Override via the MODELS var (CSV).
+    const fallbacks = (env.MODELS || "").split(",").map((s) => s.trim()).filter(Boolean);
+    // OpenRouter allows at most 3 models in the fallback array.
+    const models = (fallbacks.length ? fallbacks : [
+      primary,
+      "google/gemma-4-26b-a4b-it:free",
+      "nvidia/nemotron-3-ultra-550b-a55b:free",
+    ]).slice(0, 3);
+    const payload = { model: primary, models, messages };
     // Longer replies, but kept moderate so a single turn doesn't blow the
     // provider's tokens-per-minute budget. Tune via the MAX_TOKENS var.
     const maxTok = parseInt(env.MAX_TOKENS || "2048", 10);
@@ -240,8 +250,8 @@ export default {
       upstream = await doFetch();
       // Free shared pools often return 429; retry a few times before giving up.
       let tries = 0;
-      while (upstream.status === 429 && tries < 3) {
-        await new Promise((r) => setTimeout(r, 900));
+      while (upstream.status === 429 && tries < 5) {
+        await new Promise((r) => setTimeout(r, 1000));
         upstream = await doFetch();
         tries++;
       }
