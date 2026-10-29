@@ -9,7 +9,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.ultron.chat.net.ChatApi
 import com.ultron.chat.tools.ToolProtocol
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
@@ -30,6 +32,8 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         private set
     var busy by mutableStateOf(false)
         private set
+
+    private var job: Job? = null
 
     init {
         conversations.addAll(ChatStore.fromJson(prefs.chatsJson))
@@ -64,8 +68,48 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         persist()
     }
 
+    fun renameChat(id: String, title: String) {
+        conversations.firstOrNull { it.id == id }?.let { it.title = title.trim().take(60) }
+        persist()
+    }
+
+    fun clearAllChats() {
+        conversations.clear()
+        newChat()
+        persist()
+    }
+
+    /** Deletes a single message from the current conversation. */
+    fun deleteMessage(index: Int) {
+        val c = current
+        if (index in c.messages.indices) { c.messages.removeAt(index); persist() }
+    }
+
     /** "New chat" button. */
     fun clear() = newChat()
+
+    /** Stops an in-progress generation, keeping whatever has streamed so far. */
+    fun stop() {
+        job?.cancel()
+        job = null
+        busy = false
+        status = Status.READY
+        val c = current
+        val last = c.messages.lastOrNull()
+        if (last != null && last.role == "assistant" && last.content.isBlank() && last.tools.isNullOrEmpty()) {
+            c.messages.removeAt(c.messages.size - 1)
+        }
+        persist()
+    }
+
+    /** Regenerates the last assistant reply from the preceding user turn. */
+    fun regenerate(apiBase: String, errText: String, onReply: (String) -> Unit) {
+        if (busy) return
+        val c = current
+        if (c.messages.lastOrNull()?.role == "assistant") c.messages.removeAt(c.messages.size - 1)
+        if (c.messages.lastOrNull()?.role != "user") return
+        startTurn(apiBase, errText, onReply)
+    }
 
     /**
      * Sends a turn and runs the tool-use agent loop: it streams a reply, and if
@@ -79,12 +123,17 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         val c = current
         c.messages.add(Msg("user", t))
         if (c.title.isBlank()) c.title = t.take(40)
+        startTurn(apiBase, errText, onReply)
+    }
+
+    private fun startTurn(apiBase: String, errText: String, onReply: (String) -> Unit) {
+        val c = current
         val idx = c.messages.size                 // index for the streaming assistant placeholder
         c.messages.add(Msg("assistant", ""))
         busy = true
         status = Status.THINKING
         persist()
-        viewModelScope.launch {
+        job = viewModelScope.launch {
           try {
             val working = c.messages.take(idx).toMutableList()   // up to & including the user turn
             val steps = mutableListOf<ToolStep>()
@@ -150,6 +199,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             }
             persist()
           } catch (t: Throwable) {
+            if (t is CancellationException) throw t   // user stopped: leave partial as-is
             // Last-resort guard: nothing in a turn may crash the app.
             busy = false
             status = Status.READY

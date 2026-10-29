@@ -20,6 +20,16 @@ class Prefs(ctx: Context) {
         get() = sp.getString("lang", "ar") ?: "ar"
         set(v) { sp.edit().putString("lang", v).apply() }
 
+    /** Speak every reply aloud even without voice mode. */
+    var autoSpeak: Boolean
+        get() = sp.getBoolean("autospeak", false)
+        set(v) { sp.edit().putBoolean("autospeak", v).apply() }
+
+    /** Haptic feedback on actions. */
+    var haptics: Boolean
+        get() = sp.getBoolean("haptics", true)
+        set(v) { sp.edit().putBoolean("haptics", v).apply() }
+
     /** All conversations serialized as JSON (see ChatStore). */
     var chatsJson: String
         get() = sp.getString("chats", "") ?: ""

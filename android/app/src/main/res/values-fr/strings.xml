@@ -59,4 +59,14 @@
     <string name="avatar_exit">Quitter</string>
     <string name="avatar_idle">Touchez pour parler</string>
     <string name="avatar_need_mic">Activez le microphone pour parler à Ultron.</string>
+    <string name="regenerate">Régénérer</string>
+    <string name="speak">Lire</string>
+    <string name="share">Partager</string>
+    <string name="auto_speak_t">Lire les réponses</string>
+    <string name="auto_speak_d">Lire chaque réponse à voix haute</string>
+    <string name="haptics_t">Vibrations</string>
+    <string name="haptics_d">Vibrer lors des actions</string>
+    <string name="clear_all">Effacer les discussions</string>
+    <string name="rename">Renommer</string>
+    <string name="msg_actions">Message</string>
 </resources>

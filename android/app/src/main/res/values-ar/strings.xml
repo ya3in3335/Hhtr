@@ -59,4 +59,14 @@
     <string name="avatar_exit">خروج</string>
     <string name="avatar_idle">انقر لتتكلم</string>
     <string name="avatar_need_mic">فعّل الميكروفون لتتحدث مع ألترون.</string>
+    <string name="regenerate">إعادة توليد</string>
+    <string name="speak">نطق</string>
+    <string name="share">مشاركة</string>
+    <string name="auto_speak_t">نطق الردود تلقائيًا</string>
+    <string name="auto_speak_d">اقرأ كل رد بصوت</string>
+    <string name="haptics_t">الاهتزاز</string>
+    <string name="haptics_d">اهتزاز عند التفاعل</string>
+    <string name="clear_all">حذف كل المحادثات</string>
+    <string name="rename">إعادة تسمية</string>
+    <string name="msg_actions">الرسالة</string>
 </resources>

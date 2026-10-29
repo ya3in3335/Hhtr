@@ -1,5 +1,6 @@
 package com.ultron.chat.ui
 
+import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -12,7 +13,9 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,8 +41,15 @@ import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
@@ -54,6 +64,8 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -66,6 +78,7 @@ import com.ultron.chat.Conversation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -83,6 +96,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -169,18 +184,40 @@ fun ChatScreen(vm: ChatViewModel) {
     var showLang by remember { mutableStateOf(false) }
     var showAvatar by remember { mutableStateOf(false) }
     var showGh by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
+    var actionIndex by remember { mutableStateOf(-1) }        // message long-pressed
+    var renameId by remember { mutableStateOf<String?>(null) } // chat being renamed
+    var autoSpeak by remember { mutableStateOf(prefs.autoSpeak) }
 
     val listState = rememberLazyListState()
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val errText = stringResource(R.string.err_connect)
     val locLabel = stringResource(R.string.your_location)
+    val haptic = LocalHapticFeedback.current
 
     val lastLen = vm.messages.lastOrNull()?.content?.length ?: 0
     LaunchedEffect(vm.messages.size, lastLen) {
         if (vm.messages.isNotEmpty()) listState.scrollToItem(vm.messages.size - 1, Int.MAX_VALUE)
     }
+    val atBottom by remember {
+        derivedStateOf {
+            val last = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            last >= (vm.messages.size - 1)
+        }
+    }
 
-    fun fire(text: String) = vm.send(WORKER_URL, text, errText) { reply -> if (micOn) host.speak(reply, prefs.lang) }
+    fun share(text: String) {
+        if (text.isBlank()) return
+        val send = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"; putExtra(Intent.EXTRA_TEXT, text)
+        }
+        runCatching { ctx.startActivity(Intent.createChooser(send, null)) }
+    }
+
+    fun speakOut(text: String) = host.speak(text, prefs.lang)
+    fun shouldSpeak() = micOn || autoSpeak
+    fun fire(text: String) = vm.send(WORKER_URL, text, errText) { reply -> if (shouldSpeak()) host.speak(reply, prefs.lang) }
+    fun regenerate() = vm.regenerate(WORKER_URL, errText) { reply -> if (shouldSpeak()) host.speak(reply, prefs.lang) }
     fun doSend(text: String) {
         val t = text.trim()
         if (t.isEmpty()) return
@@ -233,6 +270,8 @@ fun ChatScreen(vm: ChatViewModel) {
                 onPerms = { scope.launch { drawerState.close() }; showPerms = true },
                 onLang = { scope.launch { drawerState.close() }; showLang = true },
                 onGitHub = { scope.launch { drawerState.close() }; showGh = true },
+                onSettings = { scope.launch { drawerState.close() }; showSettings = true },
+                onRename = { id -> renameId = id },
             )
         },
     ) {
@@ -248,7 +287,8 @@ fun ChatScreen(vm: ChatViewModel) {
                     onLang = { showLang = true })
             },
             bottomBar = {
-                Composer(input, { input = it }, { doSend(input) }, { toggleMic() }, { vm.clear() }, listening)
+                Composer(input, { input = it }, { doSend(input) }, { toggleMic() }, { vm.clear() },
+                    listening, vm.busy, onStop = { vm.stop() })
             },
         ) { pad ->
             Box(Modifier.padding(pad).fillMaxSize()) {
@@ -258,10 +298,31 @@ fun ChatScreen(vm: ChatViewModel) {
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(18.dp),
+                        contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 14.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
-                        items(vm.messages.size) { i -> MessageItem(vm.messages[i]) }
+                        items(vm.messages.size) { i ->
+                            val m = vm.messages[i]
+                            val isLastAssistant = i == vm.messages.size - 1 && m.role == "assistant" && !vm.busy && m.content.isNotBlank()
+                            MessageItem(
+                                m,
+                                isLastAssistant = isLastAssistant,
+                                onRegenerate = { regenerate() },
+                                onSpeak = { speakOut(m.content) },
+                                onLongPress = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); actionIndex = i },
+                            )
+                        }
+                    }
+                    // Jump-to-latest button when scrolled up.
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = !atBottom && vm.messages.size > 2,
+                        modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
+                    ) {
+                        FloatingActionButton(
+                            onClick = { scope.launch { listState.scrollToItem(vm.messages.size - 1, Int.MAX_VALUE) } },
+                            containerColor = UltronGlassStrong, contentColor = UltronText,
+                            modifier = Modifier.size(44.dp),
+                        ) { Icon(Icons.Filled.KeyboardArrowDown, contentDescription = null) }
                     }
                 }
             }
@@ -288,6 +349,52 @@ fun ChatScreen(vm: ChatViewModel) {
         ModalBottomSheet(onDismissRequest = { showLang = false }, containerColor = UltronInk, shape = sheetShape) {
             LangSheet(prefs.lang) { code -> showLang = false; host.setLocale(code) }
         }
+    }
+    if (showSettings) {
+        ModalBottomSheet(onDismissRequest = { showSettings = false }, containerColor = UltronInk,
+            sheetState = rememberModalBottomSheetState(), shape = sheetShape) {
+            SettingsSheet(
+                autoSpeak = autoSpeak,
+                onAutoSpeak = { autoSpeak = it; prefs.autoSpeak = it },
+                haptics = prefs.haptics,
+                onHaptics = { prefs.haptics = it },
+                onClearAll = { vm.clearAllChats(); showSettings = false },
+                onClose = { showSettings = false },
+            )
+        }
+    }
+    if (actionIndex in vm.messages.indices) {
+        val m = vm.messages[actionIndex]
+        val canRegen = actionIndex == vm.messages.size - 1 && m.role == "assistant" && !vm.busy && m.content.isNotBlank()
+        ModalBottomSheet(onDismissRequest = { actionIndex = -1 }, containerColor = UltronInk,
+            sheetState = rememberModalBottomSheetState(), shape = sheetShape) {
+            MessageActionsSheet(
+                isAssistant = m.role == "assistant",
+                canRegenerate = canRegen,
+                onCopy = { clipCopy(ctx, m.content); actionIndex = -1 },
+                onShare = { share(m.content); actionIndex = -1 },
+                onSpeak = { speakOut(m.content); actionIndex = -1 },
+                onRegenerate = { regenerate(); actionIndex = -1 },
+                onDelete = { vm.deleteMessage(actionIndex); actionIndex = -1 },
+                onClose = { actionIndex = -1 },
+            )
+        }
+    }
+    renameId?.let { id ->
+        val conv = vm.conversations.firstOrNull { it.id == id }
+        RenameDialog(
+            initial = conv?.title.orEmpty(),
+            onConfirm = { vm.renameChat(id, it); renameId = null },
+            onDismiss = { renameId = null },
+        )
+    }
+}
+
+/** Copies text to the clipboard without a Compose clipboard handle. */
+private fun clipCopy(ctx: android.content.Context, text: String) {
+    runCatching {
+        val cm = ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+        cm.setPrimaryClip(android.content.ClipData.newPlainText("ultron", text))
     }
 }
 
@@ -502,34 +609,68 @@ private fun Pill(text: String, on: Boolean) {
     ) { Text(text, color = if (on) Color(0xFF8CF0A6) else UltronMuted, fontSize = 11.sp) }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun MessageItem(msg: Msg) {
+private fun MessageItem(
+    msg: Msg,
+    isLastAssistant: Boolean = false,
+    onRegenerate: () -> Unit = {},
+    onSpeak: () -> Unit = {},
+    onLongPress: () -> Unit = {},
+) {
     if (msg.role == "user") {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             Box(
                 Modifier
-                    .widthIn(max = 320.dp)
-                    .shadow(10.dp, RoundedCornerShape(22.dp, 22.dp, 8.dp, 22.dp), spotColor = UltronRed.copy(alpha = .55f), ambientColor = Color.Transparent)
-                    .clip(RoundedCornerShape(22.dp, 22.dp, 8.dp, 22.dp))
+                    .widthIn(max = 300.dp)
+                    .shadow(8.dp, RoundedCornerShape(20.dp, 20.dp, 7.dp, 20.dp), spotColor = UltronRed.copy(alpha = .5f), ambientColor = Color.Transparent)
+                    .clip(RoundedCornerShape(20.dp, 20.dp, 7.dp, 20.dp))
                     .background(UserBrush)
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
-            ) { Text(msg.content, color = Color.White, fontSize = 16.sp, lineHeight = 24.sp) }
+                    .combinedClickable(onClick = {}, onLongClick = onLongPress)
+                    .padding(horizontal = 15.dp, vertical = 11.dp)
+            ) { Text(msg.content, color = Color.White, fontSize = 15.sp, lineHeight = 22.sp) }
         }
     } else {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
             Box(
-                Modifier.size(30.dp).clip(CircleShape).background(UltronSurface2).border(1.dp, UltronGlassBorder, CircleShape),
+                Modifier.size(28.dp).clip(CircleShape).background(UltronSurface2).border(1.dp, UltronGlassBorder, CircleShape),
                 contentAlignment = Alignment.Center,
-            ) { Image(painterResource(R.drawable.ultron), contentDescription = null, modifier = Modifier.size(22.dp)) }
-            Spacer(Modifier.size(12.dp))
-            Column(Modifier.weight(1f).padding(top = 3.dp)) {
+            ) { Image(painterResource(R.drawable.ultron), contentDescription = null, modifier = Modifier.size(20.dp)) }
+            Spacer(Modifier.size(10.dp))
+            Column(
+                Modifier
+                    .weight(1f)
+                    .padding(top = 2.dp)
+                    .combinedClickable(onClick = {}, onLongClick = onLongPress),
+            ) {
                 if (!msg.tools.isNullOrEmpty()) ToolsBlock(msg.tools)
                 if (msg.content.isBlank() && msg.tools.isNullOrEmpty()) TypingDots()
                 else if (msg.content.isNotBlank()) SelectionContainer { MarkdownText(msg.content, UltronText) }
                 if (!msg.reasoning.isNullOrBlank()) ReasoningBlock(msg.reasoning)
-                if (msg.content.isNotBlank()) CopyRow(msg.content)
+                if (msg.content.isNotBlank()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CopyRow(msg.content)
+                        if (isLastAssistant) {
+                            Spacer(Modifier.size(4.dp))
+                            MsgAction(Icons.Filled.Refresh, stringResource(R.string.regenerate), onRegenerate)
+                            MsgAction(Icons.Filled.VolumeUp, stringResource(R.string.speak), onSpeak)
+                        }
+                    }
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun MsgAction(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
+    Row(
+        Modifier.clip(RoundedCornerShape(8.dp)).clickable { onClick() }.padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, tint = UltronMuted, modifier = Modifier.size(14.dp))
+        Spacer(Modifier.size(5.dp))
+        Text(label, color = UltronMuted, fontSize = 11.sp)
     }
 }
 
@@ -611,7 +752,10 @@ private fun TypingDots() {
 }
 
 @Composable
-private fun Composer(value: String, onValue: (String) -> Unit, onSend: () -> Unit, onMic: () -> Unit, onNew: () -> Unit, listening: Boolean) {
+private fun Composer(
+    value: String, onValue: (String) -> Unit, onSend: () -> Unit, onMic: () -> Unit, onNew: () -> Unit,
+    listening: Boolean, busy: Boolean, onStop: () -> Unit,
+) {
     val hasText = value.isNotBlank()
     val micT = rememberInfiniteTransition(label = "mic")
     val micPulse by micT.animateFloat(0.55f, 1f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "mp")
@@ -655,16 +799,23 @@ private fun Composer(value: String, onValue: (String) -> Unit, onSend: () -> Uni
                     contentAlignment = Alignment.Center,
                 ) { Icon(Icons.Filled.Mic, contentDescription = null, tint = if (listening) Color.White else UltronText, modifier = Modifier.size(19.dp)) }
                 Spacer(Modifier.weight(1f))
-                // send up-arrow
+                // send / stop button
                 Box(
                     Modifier
                         .size(42.dp)
-                        .shadow(if (hasText) 14.dp else 0.dp, CircleShape, spotColor = UltronRed, ambientColor = UltronRed)
+                        .shadow(if (hasText || busy) 14.dp else 0.dp, CircleShape, spotColor = UltronRed, ambientColor = UltronRed)
                         .clip(CircleShape)
-                        .background(if (hasText) SendBrush else Brush.linearGradient(listOf(Color(0xFF3A3238), Color(0xFF2B262B))))
-                        .clickable(enabled = hasText) { onSend() },
+                        .background(if (hasText || busy) SendBrush else Brush.linearGradient(listOf(Color(0xFF3A3238), Color(0xFF2B262B))))
+                        .clickable(enabled = hasText || busy) { if (busy) onStop() else onSend() },
                     contentAlignment = Alignment.Center,
-                ) { Icon(Icons.Filled.ArrowUpward, contentDescription = null, tint = if (hasText) Color.White else UltronMuted, modifier = Modifier.size(20.dp)) }
+                ) {
+                    Icon(
+                        if (busy) Icons.Filled.Stop else Icons.Filled.ArrowUpward,
+                        contentDescription = null,
+                        tint = if (hasText || busy) Color.White else UltronMuted,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
             }
         }
     }
@@ -793,6 +944,8 @@ private fun DrawerContent(
     onPerms: () -> Unit,
     onLang: () -> Unit,
     onGitHub: () -> Unit,
+    onSettings: () -> Unit,
+    onRename: (String) -> Unit,
 ) {
     var query by remember { mutableStateOf("") }
     ModalDrawerSheet(drawerContainerColor = Color.Transparent, drawerTonalElevation = 0.dp) {
@@ -845,7 +998,10 @@ private fun DrawerContent(
                 LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     items(shown.size) { i ->
                         val c = shown[i]
-                        ChatRow(c, c.id == vm.currentId, onClick = { vm.selectChat(c.id); onPicked() }, onDelete = { vm.deleteChat(c.id) })
+                        ChatRow(c, c.id == vm.currentId,
+                            onClick = { vm.selectChat(c.id); onPicked() },
+                            onRename = { onRename(c.id) },
+                            onDelete = { vm.deleteChat(c.id) })
                     }
                 }
                 Spacer(Modifier.size(10.dp))
@@ -855,6 +1011,7 @@ private fun DrawerContent(
                 DrawerActionRow(Icons.Filled.Security, stringResource(R.string.permissions), onPerms)
                 DrawerActionRow(Icons.Filled.Translate, stringResource(R.string.language), onLang)
                 DrawerActionRow(Icons.Filled.Link, stringResource(R.string.gh_connect), onGitHub)
+                DrawerActionRow(Icons.Filled.Settings, stringResource(R.string.settings), onSettings)
             }
         }
     }
@@ -903,11 +1060,11 @@ private fun GhSheet(initial: String, onSave: (String) -> Unit, onClose: () -> Un
 }
 
 @Composable
-private fun ChatRow(c: Conversation, selected: Boolean, onClick: () -> Unit, onDelete: () -> Unit) {
+private fun ChatRow(c: Conversation, selected: Boolean, onClick: () -> Unit, onRename: () -> Unit, onDelete: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
             .background(if (selected) Color(0x1FE11D2A) else Color.Transparent)
-            .clickable { onClick() }.padding(horizontal = 12.dp, vertical = 12.dp),
+            .clickable { onClick() }.padding(start = 12.dp, end = 4.dp, top = 10.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -916,10 +1073,109 @@ private fun ChatRow(c: Conversation, selected: Boolean, onClick: () -> Unit, onD
             fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
+        Box(Modifier.clip(RoundedCornerShape(8.dp)).clickable { onRename() }.padding(6.dp)) {
+            Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.rename), tint = UltronMuted, modifier = Modifier.size(16.dp))
+        }
         Box(Modifier.clip(RoundedCornerShape(8.dp)).clickable { onDelete() }.padding(6.dp)) {
-            Icon(Icons.Filled.DeleteOutline, contentDescription = null, tint = UltronMuted, modifier = Modifier.size(18.dp))
+            Icon(Icons.Filled.DeleteOutline, contentDescription = stringResource(R.string.delete), tint = UltronMuted, modifier = Modifier.size(18.dp))
         }
     }
+}
+
+@Composable
+private fun SettingsSheet(
+    autoSpeak: Boolean, onAutoSpeak: (Boolean) -> Unit,
+    haptics: Boolean, onHaptics: (Boolean) -> Unit,
+    onClearAll: () -> Unit, onClose: () -> Unit,
+) {
+    Column(Modifier.padding(20.dp)) {
+        SheetHandle()
+        Text(stringResource(R.string.settings), color = UltronText, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+        Spacer(Modifier.size(14.dp))
+        ToggleRow(stringResource(R.string.auto_speak_t), stringResource(R.string.auto_speak_d), autoSpeak, onAutoSpeak)
+        Spacer(Modifier.size(10.dp))
+        ToggleRow(stringResource(R.string.haptics_t), stringResource(R.string.haptics_d), haptics, onHaptics)
+        Spacer(Modifier.size(16.dp))
+        SheetActionRow(Icons.Filled.DeleteOutline, stringResource(R.string.clear_all), destructive = true, onClick = onClearAll)
+        Spacer(Modifier.size(8.dp))
+        TextButton(onClick = onClose, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.close), color = UltronText) }
+        Spacer(Modifier.size(8.dp))
+    }
+}
+
+@Composable
+private fun ToggleRow(title: String, desc: String, checked: Boolean, onCheck: (Boolean) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().glass(RoundedCornerShape(16.dp)).padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, color = UltronText, fontWeight = FontWeight.Medium, fontSize = 15.sp)
+            Text(desc, color = UltronMuted, fontSize = 12.sp)
+        }
+        Switch(checked = checked, onCheckedChange = onCheck,
+            colors = SwitchDefaults.colors(checkedTrackColor = UltronRed, checkedThumbColor = Color.White))
+    }
+}
+
+@Composable
+private fun MessageActionsSheet(
+    isAssistant: Boolean, canRegenerate: Boolean,
+    onCopy: () -> Unit, onShare: () -> Unit, onSpeak: () -> Unit,
+    onRegenerate: () -> Unit, onDelete: () -> Unit, onClose: () -> Unit,
+) {
+    Column(Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
+        SheetHandle()
+        Text(stringResource(R.string.msg_actions), color = UltronMuted, fontSize = 12.sp, letterSpacing = 1.sp)
+        Spacer(Modifier.size(8.dp))
+        SheetActionRow(Icons.Filled.ContentCopy, stringResource(R.string.copy), onClick = onCopy)
+        SheetActionRow(Icons.Filled.Share, stringResource(R.string.share), onClick = onShare)
+        if (isAssistant) SheetActionRow(Icons.Filled.VolumeUp, stringResource(R.string.speak), onClick = onSpeak)
+        if (canRegenerate) SheetActionRow(Icons.Filled.Refresh, stringResource(R.string.regenerate), onClick = onRegenerate)
+        SheetActionRow(Icons.Filled.DeleteOutline, stringResource(R.string.delete), destructive = true, onClick = onDelete)
+        Spacer(Modifier.size(6.dp))
+    }
+}
+
+@Composable
+private fun SheetActionRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector, label: String,
+    destructive: Boolean = false, onClick: () -> Unit,
+) {
+    val tint = if (destructive) UltronRedSoft else UltronText
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { onClick() }.padding(vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(36.dp).glass(RoundedCornerShape(11.dp)), contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(18.dp))
+        }
+        Spacer(Modifier.size(12.dp))
+        Text(label, color = tint, fontSize = 15.sp)
+    }
+}
+
+@Composable
+private fun RenameDialog(initial: String, onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
+    var text by remember { mutableStateOf(initial) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = UltronInk,
+        title = { Text(stringResource(R.string.rename), color = UltronText, fontWeight = FontWeight.Bold) },
+        text = {
+            Box(Modifier.fillMaxWidth().glass(RoundedCornerShape(14.dp)).padding(horizontal = 14.dp, vertical = 12.dp)) {
+                if (text.isEmpty()) Text(stringResource(R.string.new_chat), color = UltronMuted, fontSize = 14.sp)
+                BasicTextField(
+                    value = text, onValueChange = { text = it }, singleLine = true,
+                    textStyle = TextStyle(color = UltronText, fontFamily = Tajawal, fontSize = 15.sp),
+                    cursorBrush = SolidColor(UltronRedSoft),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = { onConfirm(text) }) { Text(stringResource(R.string.save), color = UltronRedSoft) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.close), color = UltronMuted) } },
+    )
 }
 
 private fun wantsLocation(text: String): Boolean {
